@@ -9,6 +9,7 @@ DerivedData/
 xcuserdata/
 build/
 artifacts/
+tools/ldid
 
 # Wrangler
 .wrangler/
