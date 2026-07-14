@@ -22,8 +22,6 @@ struct ContentView: View {
                 // 按身份重建会话子树：切换/新增登录身份时 SessionStore（含 token 客户端）全新创建
                 SessionRootView(auth: auth)
                     .id(auth.currentSessionId)
-                    // 本地化资源与 UIKit 导航标题都在语言改变时重建；选中的 Tab 用 SceneStorage 保留。
-                    .id(preferences.languageIdentity)
             } else {
                 LoginView()
                     .id(preferences.languageIdentity)

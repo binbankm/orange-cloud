@@ -145,4 +145,13 @@ extension WatchBridge: WCSessionDelegate {
             self.requestFreshTokenIfNeeded()
         }
     }
+
+    // iOS companion target 要求这两个回调；watchOS SDK 将它们标为 unavailable。
+    #if os(iOS)
+    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
+
+    nonisolated func sessionDidDeactivate(_ session: WCSession) {
+        session.activate()
+    }
+    #endif
 }

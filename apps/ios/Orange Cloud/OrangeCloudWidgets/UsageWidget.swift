@@ -99,28 +99,39 @@ nonisolated struct UsageWidgetProvider: AppIntentTimelineProvider {
 // iOS 16 的 WidgetKit 没有 AppIntentConfiguration；仍提供同一张用量卡，
 // 默认展示当前账号的 Workers 用量。
 nonisolated private struct UsageWidgetFallbackProvider: TimelineProvider {
+    let serviceID: String
+
     func placeholder(in context: Context) -> UsageWidgetEntry {
-        UsageWidgetEntry(date: .now, service: sampleService(for: "workers"), missingName: nil)
+        UsageWidgetEntry(date: .now, service: sampleService(for: serviceID), missingName: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (UsageWidgetEntry) -> Void) {
         let accountId = WidgetSnapshot.currentAccountId()
-        let service = resolveService("workers", accountId: accountId) ?? sampleService(for: "workers")
+        let service = resolveService(serviceID, accountId: accountId) ?? sampleService(for: serviceID)
         completion(UsageWidgetEntry(date: .now, service: service, missingName: nil))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<UsageWidgetEntry>) -> Void) {
         let accountId = WidgetSnapshot.currentAccountId()
-        let service = resolveService("workers", accountId: accountId)
+        let service = resolveService(serviceID, accountId: accountId)
         let unavailable = service == nil && !WidgetDataStore.loadAccountAnalyticsAvailable()
         let entry = UsageWidgetEntry(
             date: .now,
             service: service,
-            missingName: service == nil ? "Workers" : nil,
+            missingName: service == nil ? serviceDisplayName : nil,
             unavailable: unavailable
         )
         let next = Calendar.current.date(byAdding: .minute, value: 30, to: .now) ?? .now
         completion(Timeline(entries: [entry], policy: .after(next)))
+    }
+
+    private var serviceDisplayName: String {
+        switch serviceID {
+        case "r2": return "R2"
+        case "d1": return "D1"
+        case "kv": return "KV"
+        default: return "Workers"
+        }
     }
 }
 
@@ -129,11 +140,45 @@ nonisolated private struct UsageWidgetFallbackProvider: TimelineProvider {
 struct UsageWidget: Widget {
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "UsageWidget", provider: UsageWidgetFallbackProvider()) { entry in
+        StaticConfiguration(kind: "UsageWidget", provider: UsageWidgetFallbackProvider(serviceID: "workers")) { entry in
             UsageWidgetView(entry: entry).daybreakContainer(date: entry.date)
         }
         .configurationDisplayName("账号用量")
         .description("当前账号的 Workers 用量")
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryInline, .accessoryCircular, .accessoryRectangular])
+    }
+}
+
+// iOS 16 无法通过长按配置服务，因此将其余三种用量作为独立卡片提供。
+struct R2UsageWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "R2UsageWidget", provider: UsageWidgetFallbackProvider(serviceID: "r2")) { entry in
+            UsageWidgetView(entry: entry).daybreakContainer(date: entry.date)
+        }
+        .configurationDisplayName("R2 用量")
+        .description("当前账号的 R2 存储与操作用量")
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryInline, .accessoryCircular, .accessoryRectangular])
+    }
+}
+
+struct D1UsageWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "D1UsageWidget", provider: UsageWidgetFallbackProvider(serviceID: "d1")) { entry in
+            UsageWidgetView(entry: entry).daybreakContainer(date: entry.date)
+        }
+        .configurationDisplayName("D1 用量")
+        .description("当前账号的 D1 行读写与存储用量")
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryInline, .accessoryCircular, .accessoryRectangular])
+    }
+}
+
+struct KVUsageWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "KVUsageWidget", provider: UsageWidgetFallbackProvider(serviceID: "kv")) { entry in
+            UsageWidgetView(entry: entry).daybreakContainer(date: entry.date)
+        }
+        .configurationDisplayName("KV 用量")
+        .description("当前账号的 KV 读写与存储用量")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryInline, .accessoryCircular, .accessoryRectangular])
     }
 }

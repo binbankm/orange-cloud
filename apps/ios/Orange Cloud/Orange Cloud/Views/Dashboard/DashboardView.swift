@@ -175,10 +175,15 @@ private struct DashboardHomeView: View {
         cachedZones.filter { $0.status == "active" }.count
     }
 
-    /// DNS 记录数：接口汇总优先（viewModel.dnsRecordTotal），
-    /// 回退时按当前账号下的缓存域名过滤本地记录，避免跨账号累加。
+    /// DNS 记录数：接口汇总优先；完整的 Zone `total_count` 缓存次之；最后才回退
+    /// 到已下载的 DNS 记录。DNS 列表并不会在冷启动时预载，不能只依赖 records，
+    /// 否则关闭 App 再打开会错误显示为 0，直到用户下拉刷新。
     private var dnsRecordCount: Int {
         if let total = viewModel.dnsRecordTotal { return total }
+        if !cachedZones.isEmpty,
+           cachedZones.allSatisfy({ $0.dnsRecordCount != nil }) {
+            return cachedZones.reduce(0) { $0 + ($1.dnsRecordCount ?? 0) }
+        }
         let zoneIds = Set(cachedZones.map(\.id))
         return cachedRecords.filter { zoneIds.contains($0.zoneId) }.count
     }

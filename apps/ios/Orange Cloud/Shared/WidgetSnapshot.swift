@@ -44,6 +44,9 @@ nonisolated struct WidgetSnapshot: Codable, Sendable {
             if let data = try? JSONEncoder().encode(map) { d.set(data, forKey: Self.byAccountKey) }
         }
         if let data = try? JSONEncoder().encode(self) { d.set(data, forKey: Self.legacyKey) }
+        // 主 App 写入后通常会立即要求 WidgetKit 重建时间线。App Group 的
+        // UserDefaults 是跨进程存储，先同步可避免 extension 读取到上一次值。
+        d.synchronize()
     }
 
     /// 指定账号的总览；无则回退当前账号 / 旧单键
@@ -57,6 +60,26 @@ nonisolated struct WidgetSnapshot: Codable, Sendable {
 
     /// 当前账号的总览
     static func load() -> WidgetSnapshot? { load(accountId: currentAccountId()) }
+
+    /// 正常情况下总览快照由 Zone 列表刷新写入。若历史版本/中断刷新仅留下
+    /// Zone 指标快照，仍可从已有数据恢复总览，避免 Widget 错误提示为空。
+    static func loadOrSynthesize(accountId: String?) -> WidgetSnapshot? {
+        if let snapshot = load(accountId: accountId) { return snapshot }
+
+        let zones = WidgetDataStore.loadZones(accountId: accountId)
+        guard !zones.isEmpty else { return nil }
+        let resolvedID = accountId ?? currentAccountId()
+        let accountName = resolvedID.flatMap { id in
+            WidgetDataStore.loadAccounts().first(where: { $0.id == id })?.name
+        } ?? "Orange Cloud"
+        return WidgetSnapshot(
+            accountId: resolvedID,
+            accountName: accountName,
+            totalZones: zones.count,
+            activeZones: zones.count,
+            updatedAt: zones.map(\.updatedAt).max() ?? .now
+        )
+    }
 
     /// 退出身份时清掉这些账号的总览快照；当前指针指向其中之一时，连同指针与旧单键一并清掉
     static func purge(accountIds: Set<String>) {
@@ -136,6 +159,7 @@ nonisolated enum WidgetDataStore {
         var existing = loadAccounts().filter { $0.sessionId != sessionId }
         existing.append(contentsOf: accounts)
         if let data = try? JSONEncoder().encode(existing) { d.set(data, forKey: accountsKey) }
+        d.synchronize()
     }
 
     static func loadAccounts() -> [WidgetAccount] {
@@ -210,6 +234,7 @@ nonisolated enum WidgetDataStore {
         var deduped: [WidgetZoneMetrics] = []
         for zone in merged.reversed() where seen.insert(zone.id).inserted { deduped.append(zone) }
         if let data = try? JSONEncoder().encode(Array(deduped.reversed())) { d.set(data, forKey: zonesKey) }
+        d.synchronize()
     }
 
     /// 整组覆盖写入（Watch 镜像 iPhone 推来的整份快照时用，不做按账号 upsert）
@@ -248,6 +273,7 @@ nonisolated enum WidgetDataStore {
             if let data = try? JSONEncoder().encode(map) { d.set(data, forKey: usageByAccountKey) }
         }
         if let data = try? JSONEncoder().encode(usage) { d.set(data, forKey: usageLegacyKey) }
+        d.synchronize()
     }
 
     static func loadUsage(accountId: String?) -> WidgetUsageData? {

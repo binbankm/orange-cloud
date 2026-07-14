@@ -65,7 +65,7 @@ nonisolated struct ZoneStatusProvider: AppIntentTimelineProvider {
         let aggregate = aggregateZones(accountId: accountId)
         return AccountOverviewEntry(
             date: .now,
-            snapshot: WidgetSnapshot.load(accountId: accountId),
+            snapshot: WidgetSnapshot.loadOrSynthesize(accountId: accountId),
             totalRequests: aggregate.total,
             series: aggregate.series
         )
@@ -96,7 +96,7 @@ nonisolated private struct ZoneStatusFallbackProvider: TimelineProvider {
         let aggregate = aggregateZones(accountId: accountId)
         return AccountOverviewEntry(
             date: .now,
-            snapshot: WidgetSnapshot.load(accountId: accountId),
+            snapshot: WidgetSnapshot.loadOrSynthesize(accountId: accountId),
             totalRequests: aggregate.total,
             series: aggregate.series
         )

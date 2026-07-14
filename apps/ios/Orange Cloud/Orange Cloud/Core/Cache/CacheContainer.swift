@@ -125,6 +125,18 @@ final class CacheStore: ObservableObject {
 
     func warmUp() { _ = zones.count }
 
+    /// 进入后台前立即持久化，避免 500ms 的批量写入尚未执行时被系统挂起，
+    /// 下次恢复或内存回收后出现短暂的空列表。
+    func flush() {
+        pendingPersistTask?.cancel()
+        let snapshot = CacheSnapshot(zones: zones, dnsRecords: dnsRecords, workerScripts: workerScripts)
+        guard let data = try? JSONEncoder().encode(snapshot) else {
+            AppLog.app.error("缓存编码失败，无法在后台前落盘")
+            return
+        }
+        UserDefaults.standard.set(data, forKey: storageKey)
+    }
+
     /// 节流写盘：取消上一个未执行的 persist 任务，500ms 后在后台队列序列化并写入。
     /// 多次连续变更（批量 upsert、逐条删除）最终只触发一次磁盘 IO，避免主线程阻塞。
     private func persist() {

@@ -26,7 +26,29 @@ enum CacheSync {
             activeZones: zones.filter { $0.status == "active" }.count,
             updatedAt: Date()
         ).save()
+        // 即使分析接口暂时无权限或网络失败，域名指标/请求地形 Widget 也应先
+        // 获得可展示的域名基础快照；后续流量请求成功会用真实 24h 指标覆盖。
+        let existing = Dictionary(uniqueKeysWithValues: WidgetDataStore.loadZones(accountId: accountId).map { ($0.id, $0) })
+        let baselineMetrics = zones.map { zone in
+            existing[zone.id] ?? WidgetZoneMetrics(
+                id: zone.id,
+                name: zone.name,
+                requests: 0,
+                bytes: 0,
+                threats: 0,
+                uniques: 0,
+                cacheHitRate: nil,
+                requestsTrend: nil,
+                requestsSeries: [],
+                bytesSeries: [],
+                updatedAt: Date(),
+                accountId: accountId
+            )
+        }
+        WidgetDataStore.saveZones(baselineMetrics, accountId: accountId)
         WidgetCenter.shared.reloadTimelines(ofKind: "ZoneStatusWidget")
+        WidgetCenter.shared.reloadTimelines(ofKind: "ZoneStatWidget")
+        WidgetCenter.shared.reloadTimelines(ofKind: "ZoneChartWidget")
 
         SpotlightIndexer.indexZones(zones)
     }

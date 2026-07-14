@@ -8,6 +8,7 @@
 
 import Foundation
 import Combine
+import WidgetKit
 
 @MainActor
 final class SessionStore: ObservableObject {
@@ -47,8 +48,25 @@ final class SessionStore: ObservableObject {
     @Published var selectedAccount: Account? {
         didSet {
             // Widget 自取用量数据需要知道当前账户
-            UserDefaults(suiteName: WidgetSnapshot.appGroupID)?
-                .set(selectedAccount?.id, forKey: "currentAccountId")
+            guard let defaults = UserDefaults(suiteName: WidgetSnapshot.appGroupID) else { return }
+            defaults.set(selectedAccount?.id, forKey: WidgetSnapshot.currentAccountKey)
+
+            // 即使 Zone 列表请求还在进行，也先交付一个可展示的账户快照；
+            // 后续 CacheSync 会用实际域名数覆盖它。这样 Widget 不会因首次
+            // 打开、网络慢或一次请求取消而停在“打开 App 同步数据”。
+            if let account = selectedAccount,
+               WidgetSnapshot.load(accountId: account.id) == nil {
+                WidgetSnapshot(
+                    accountId: account.id,
+                    accountName: account.name,
+                    totalZones: 0,
+                    activeZones: 0,
+                    updatedAt: .now
+                ).save()
+            } else {
+                defaults.synchronize()
+            }
+            WidgetCenter.shared.reloadTimelines(ofKind: "ZoneStatusWidget")
         }
     }
     @Published var isLoadingAccounts = false

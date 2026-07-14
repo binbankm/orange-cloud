@@ -17,7 +17,7 @@ artifacts/
 .env
 .env.local
 .env*.local
-
+scripts
 # OS
 .DS_Store
 

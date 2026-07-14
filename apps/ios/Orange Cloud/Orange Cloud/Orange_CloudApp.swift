@@ -79,6 +79,7 @@ struct Orange_CloudApp: App {
                 preferences.refreshSystemLanguage()
             }
             if scenePhase == .background {
+                CacheStore.shared.flush()
                 BackgroundRefresh.schedule()
             }
         }

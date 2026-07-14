@@ -69,6 +69,8 @@ final class AppPreferencesStore: ObservableObject {
     @Published private(set) var appearanceRaw: String
     @Published private(set) var languageRaw: String
     @Published private(set) var languageRevision = 0
+    /// 上一次已应用的系统语言。回前台时只有它真的变化才重建语言相关 UI。
+    private var observedSystemLanguageIdentifier: String
 
     var theme: AppTheme {
         AppTheme(rawValue: themeRaw) ?? .cloudflareOrange
@@ -91,6 +93,7 @@ final class AppPreferencesStore: ObservableObject {
         themeRaw = UserDefaults.standard.string(forKey: AppTheme.storageKey) ?? AppTheme.cloudflareOrange.rawValue
         appearanceRaw = UserDefaults.standard.string(forKey: AppAppearance.storageKey) ?? AppAppearance.system.rawValue
         languageRaw = UserDefaults.standard.string(forKey: AppLanguage.storageKey) ?? AppLanguage.system.rawValue
+        observedSystemLanguageIdentifier = AppLanguage.systemLanguageIdentifier
         // 迁移早期版本写入的 app 级 AppleLanguages。该覆盖会让「跟随系统」误显示旧语言。
         UserDefaults.standard.removeObject(forKey: "AppleLanguages")
         AppTheme.syncToAppGroup(themeRaw)
@@ -117,6 +120,9 @@ final class AppPreferencesStore: ObservableObject {
         // 否则“跟随系统”会继续读取上次手动选择的语言。
         UserDefaults.standard.removeObject(forKey: "AppleLanguages")
         UserDefaults.standard.set(validValue, forKey: AppLanguage.storageKey)
+        if validValue == AppLanguage.system.rawValue {
+            observedSystemLanguageIdentifier = AppLanguage.systemLanguageIdentifier
+        }
         if languageRaw != validValue {
             languageRaw = validValue
         } else {
@@ -128,6 +134,9 @@ final class AppPreferencesStore: ObservableObject {
     /// App 从后台回到前台时，若选择“跟随系统”，同步系统设置后的语言和 UIKit 标题。
     func refreshSystemLanguage() {
         guard language == .system else { return }
+        let currentIdentifier = AppLanguage.systemLanguageIdentifier
+        guard currentIdentifier != observedSystemLanguageIdentifier else { return }
+        observedSystemLanguageIdentifier = currentIdentifier
         languageRevision &+= 1
     }
 }
@@ -177,7 +186,7 @@ nonisolated enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     }
 
     /// 系统语言来自 NSGlobalDomain，不读取本 App 可能遗留的 AppleLanguages 覆盖。
-    private static var systemLanguageIdentifier: String {
+    static var systemLanguageIdentifier: String {
         let global = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)
         let languages = global?["AppleLanguages"] as? [String]
         return languages?.first ?? Locale.autoupdatingCurrent.identifier

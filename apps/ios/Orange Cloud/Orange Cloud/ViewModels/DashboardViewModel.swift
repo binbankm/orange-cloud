@@ -81,6 +81,10 @@ final class DashboardViewModel: ObservableObject {
         canReadDNS: Bool,
         force: Bool = false
     ) async {
+        // DNS 记录列表不会在冷启动时整表预载；不过 Dashboard 已经把每个 Zone 的
+        // `total_count` 写入持久缓存。先把完整的缓存汇总恢复到指标格，避免 App 重启后
+        // 必须手动下拉刷新才能重新看到 DNS 总数。
+        hydrateCachedDNSRecordTotal(accountId: accountId)
         guard force || assetsLoadedForAccount != accountId else { return }
         // 冷启动若持久缓存仍在有效期内，直接用缓存（@Query 已即时渲染），不重新拉网络
         if !force, assetsLoadedForAccount == nil, CachePolicy.zonesFresh(accountId: accountId) {
@@ -102,6 +106,13 @@ final class DashboardViewModel: ObservableObject {
         assetsTask = task
         defer { assetsTask = nil }
         await task.value
+    }
+
+    private func hydrateCachedDNSRecordTotal(accountId: String) {
+        let zones = CacheStore.shared.zones(for: accountId)
+        guard !zones.isEmpty,
+              zones.allSatisfy({ $0.dnsRecordCount != nil }) else { return }
+        dnsRecordTotal = zones.reduce(0) { $0 + ($1.dnsRecordCount ?? 0) }
     }
 
     private func performLoadAssets(
