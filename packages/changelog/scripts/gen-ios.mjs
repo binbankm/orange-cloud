@@ -30,9 +30,9 @@ const body = inApp
       .map((it) => {
         const lines = [
           `                icon:   ${swiftStr(it.icon ?? "sparkles")},`,
-          `                title:  String(localized: ${swiftStr(it.title["zh-Hans"])}, table: "WhatsNew")` + (it.detail ? "," : ""),
+          `                title:  AppLocalization.string(localized: ${swiftStr(it.title["zh-Hans"])}, table: "WhatsNew")` + (it.detail ? "," : ""),
         ];
-        if (it.detail) lines.push(`                detail: String(localized: ${swiftStr(it.detail["zh-Hans"])}, table: "WhatsNew")`);
+        if (it.detail) lines.push(`                detail: AppLocalization.string(localized: ${swiftStr(it.detail["zh-Hans"])}, table: "WhatsNew")`);
         return `            WhatsNewItem(\n${lines.join("\n")}\n            )`;
       })
       .join(",\n");
@@ -51,9 +51,9 @@ const swift = `//
 import Foundation
 
 nonisolated enum WhatsNewGenerated {
-    static let releases: [WhatsNewRelease] = [
+    static var releases: [WhatsNewRelease] { [
 ${body}
-    ]
+    ] }
 }
 `;
 emit(join(IOS, "WhatsNewReleases.generated.swift"), swift);

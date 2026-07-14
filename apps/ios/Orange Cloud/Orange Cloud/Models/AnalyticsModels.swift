@@ -316,6 +316,6 @@ nonisolated struct CountryTraffic: Identifiable, Sendable {
 
     /// 本地化国家/地区名；无法解析（如 Tor 的 "T1"、未知码）时回退原始码
     var displayName: String {
-        Locale.current.localizedString(forRegionCode: countryCode) ?? countryCode
+        AppLocalization.locale.localizedString(forRegionCode: countryCode) ?? countryCode
     }
 }

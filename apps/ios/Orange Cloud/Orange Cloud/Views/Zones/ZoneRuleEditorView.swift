@@ -329,7 +329,7 @@ struct ZoneRuleEditorView: View {
     // MARK: - 配置规则
 
     /// 可编辑的设置清单（key / 展示名 / 控件类型；schema 已核实，deprecated 项不入菜单但保留原值）
-    private static let configSpecs: [(key: String, label: String, kind: ConfigKind)] = [
+    private static var configSpecs: [(key: String, label: String, kind: ConfigKind)] { [
         ("automatic_https_rewrites", AppLocalization.string(localized: "自动 HTTPS 重写"), .toggle),
         ("bic", AppLocalization.string(localized: "浏览器完整性检查"), .toggle),
         ("email_obfuscation", AppLocalization.string(localized: "Email 混淆"), .toggle),
@@ -346,7 +346,7 @@ struct ZoneRuleEditorView: View {
         ("disable_zaraz", AppLocalization.string(localized: "停用 Zaraz"), .disableFlag),
         ("disable_rum", AppLocalization.string(localized: "停用 RUM"), .disableFlag),
         ("disable_pay_per_crawl", AppLocalization.string(localized: "停用 Pay Per Crawl"), .disableFlag),
-    ]
+    ] }
 
     enum ConfigKind { case toggle, disableFlag, choice([String]), autominify }
 

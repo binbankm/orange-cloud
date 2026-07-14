@@ -106,7 +106,8 @@ struct SettingsView: View {
                 Section {
                     Picker(selection: $dayBoundaryRaw) {
                         ForEach(DayBoundary.allCases) { boundary in
-                            Text(boundary.label).tag(boundary.rawValue)
+                            Text(AppLocalization.string(localized: boundary.localizationKey))
+                                .tag(boundary.rawValue)
                         }
                     } label: {
                         HStack(spacing: 12) {

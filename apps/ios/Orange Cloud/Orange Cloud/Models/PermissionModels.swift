@@ -30,7 +30,7 @@ extension FeaturePermission {
 
     // MARK: - 功能模块完整定义
 
-    static let allFeatures: [FeaturePermission] = [
+    static var allFeatures: [FeaturePermission] { [
         .init(
             id: "account",
             title: AppLocalization.string(localized: "账号信息"),
@@ -308,7 +308,7 @@ extension FeaturePermission {
             editScopes: ["notifications.write"],
             isRequired: false
         ),
-    ]
+    ] }
 
     // MARK: - Scope 构建
 

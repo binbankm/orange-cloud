@@ -17,10 +17,12 @@ nonisolated enum DayBoundary: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
-    var label: String {
+    /// 供主 App 使用的本地化键。主 App 必须通过 AppLocalization 动态解析，
+    /// 不能在共享层使用 String(localized:) 的启动期语言缓存。
+    var localizationKey: String.LocalizationValue {
         switch self {
         case .utc:   "UTC"
-        case .local: String(localized: "本地时间")
+        case .local: "本地时间"
         }
     }
 

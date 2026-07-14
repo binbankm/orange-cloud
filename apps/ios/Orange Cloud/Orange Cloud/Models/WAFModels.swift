@@ -118,7 +118,7 @@ nonisolated enum WAFConditionLogic: String, CaseIterable, Identifiable, Sendable
 }
 
 nonisolated enum WAFExpressionCatalog {
-    static let fields: [WAFField] = [
+    static var fields: [WAFField] { [
         WAFField(field: "http.host",                label: AppLocalization.string(localized: "主机名"),      type: .string),
         WAFField(field: "http.request.uri.path",    label: AppLocalization.string(localized: "URI 路径"),    type: .string),
         WAFField(field: "http.request.uri.query",   label: AppLocalization.string(localized: "查询字符串"),  type: .string),
@@ -133,7 +133,7 @@ nonisolated enum WAFExpressionCatalog {
         WAFField(field: "ip.src.asnum",             label: "ASN",                            type: .number),
         WAFField(field: "cf.threat_score",          label: AppLocalization.string(localized: "威胁分数"),    type: .number),
         WAFField(field: "cf.bot_management.score",  label: AppLocalization.string(localized: "Bot 分数"),    type: .number),
-    ]
+    ] }
 
     static func field(for key: String) -> WAFField? { fields.first { $0.field == key } }
 

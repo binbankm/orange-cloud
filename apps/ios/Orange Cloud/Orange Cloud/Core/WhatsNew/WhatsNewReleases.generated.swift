@@ -9,7 +9,7 @@
 import Foundation
 
 nonisolated enum WhatsNewGenerated {
-    static let releases: [WhatsNewRelease] = [
+    static var releases: [WhatsNewRelease] { [
         WhatsNewRelease(version: "1.8.4", items: [
             WhatsNewItem(
                 icon:   "shield.lefthalf.filled",
@@ -280,5 +280,5 @@ nonisolated enum WhatsNewGenerated {
                 detail: AppLocalization.string(localized: "刷新失败不再弹窗打断，下拉刷新更稳定可靠。", table: "WhatsNew")
             )
         ])
-    ]
+    ] }
 }

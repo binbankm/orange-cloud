@@ -125,12 +125,12 @@ private struct CronEditorSheet: View {
     private var isValid: Bool { fieldCount == 5 }
     private var canSave: Bool { isValid && !viewModel.isSaving }
 
-    private static let presets: [(String, String)] = [
+    private static var presets: [(String, String)] { [
         ("*/5 * * * *", AppLocalization.string(localized: "每 5 分钟")),
         ("0 * * * *",   AppLocalization.string(localized: "每小时整点")),
         ("0 0 * * *",   AppLocalization.string(localized: "每天 0 点（UTC）")),
         ("0 0 * * 1",   AppLocalization.string(localized: "每周一 0 点（UTC）")),
-    ]
+    ] }
 
     var body: some View {
 

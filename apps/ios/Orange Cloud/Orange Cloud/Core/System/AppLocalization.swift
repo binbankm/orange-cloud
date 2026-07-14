@@ -16,6 +16,9 @@ nonisolated enum AppLocalization {
         AppLanguage(rawValue: UserDefaults.standard.string(forKey: AppLanguage.storageKey) ?? "") ?? .system
     }
 
+    /// 供国家/地区名等 Foundation 本地化 API 使用的当前应用语言环境。
+    static var locale: Locale { language.locale }
+
     private static var bundle: Bundle {
         let selected = language
         guard let path = Bundle.main.path(forResource: selected.localizationIdentifier, ofType: "lproj"),

@@ -117,9 +117,6 @@ struct ToolResultIsland<Content: View>: View {
 nonisolated enum ToolFormat {
     static func date(_ date: Date?) -> String {
         guard let date else { return "—" }
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .short
-        return f.string(from: date)
+        return AppLocalization.dateTime(date, timeStyle: .short)
     }
 }

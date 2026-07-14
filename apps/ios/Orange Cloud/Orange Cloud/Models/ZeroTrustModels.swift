@@ -401,5 +401,7 @@ nonisolated enum GatewayExpressionCatalog {
     }
 
     /// 编辑器底部的语法提示
-    static let syntaxHint = AppLocalization.string(localized: "用 and / or 连接多个条件；字符串加双引号；集合用 {1 2 3}；数组字段用 any(字段[*] == 值)。保存时 Cloudflare 会校验并规范化表达式。")
+    static var syntaxHint: String {
+        AppLocalization.string(localized: "用 and / or 连接多个条件；字符串加双引号；集合用 {1 2 3}；数组字段用 any(字段[*] == 值)。保存时 Cloudflare 会校验并规范化表达式。")
+    }
 }

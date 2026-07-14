@@ -30,14 +30,14 @@ struct DNSRecordFormView: View {
     @State private var aiPaywallPresented = false
 
     private static let recordTypes = ["A", "AAAA", "CNAME", "TXT", "MX", "NS"]
-    private static let ttlOptions: [(label: String, value: Int)] = [
+    private static var ttlOptions: [(label: String, value: Int)] { [
         (AppLocalization.string(localized: "自动"), 1),
         (AppLocalization.string(localized: "1 分钟"), 60),
         (AppLocalization.string(localized: "5 分钟"), 300),
         (AppLocalization.string(localized: "30 分钟"), 1800),
         (AppLocalization.string(localized: "1 小时"), 3600),
         (AppLocalization.string(localized: "1 天"), 86400),
-    ]
+    ] }
 
     /// 只有 A / AAAA / CNAME 支持 Cloudflare 代理
     private var supportsProxy: Bool {
