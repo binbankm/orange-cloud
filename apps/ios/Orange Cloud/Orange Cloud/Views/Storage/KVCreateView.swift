@@ -10,7 +10,7 @@ import SwiftUI
 
 struct KVCreateView: View {
 
-    let viewModel: KVNamespaceListViewModel
+    @ObservedObject var viewModel: KVNamespaceListViewModel
     let accountId: String
 
     @Environment(\.dismiss) private var dismiss
@@ -49,7 +49,7 @@ struct KVCreateView: View {
                     }
                 }
             }
-            .navigationTitle("创建命名空间")
+            .ocNavigationTitle("创建命名空间")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -22,7 +22,7 @@
 
 ## English
 
-Orange Cloud is a third-party Cloudflare management app for iPhone, iPad, and Apple Watch, built entirely with Swift and SwiftUI. Unlike other clients, it signs you in through Cloudflare's official **OAuth 2.0 + PKCE** flow — there's no API token to copy and paste. The baseline is iOS 17, with iOS 18 / 26 capabilities layered on progressively on the devices that support them.
+Orange Cloud is a third-party Cloudflare management app for iPhone, iPad, and Apple Watch, built entirely with Swift and SwiftUI. Unlike other clients, it signs you in through Cloudflare's official **OAuth 2.0 + PKCE** flow — there's no API token to copy and paste. The baseline is iOS 16, with iOS 17 / 18 / 26 capabilities layered on progressively on the devices that support them.
 
 <div align="center">
 <img src="apps/web/public/shots/en/01_dashboard.jpg" width="230" alt="Dashboard" />
@@ -81,7 +81,7 @@ If Orange Cloud is useful to you, you can support the project on [Ko-fi](https:/
 
 ### Building from source
 
-1. **Xcode 26 or later.** Open `apps/ios/Orange Cloud/Orange Cloud.xcodeproj`. The app targets iOS 17 and watchOS 10.6, with an embedded Apple Watch companion app.
+1. **Xcode 26 or later.** Open `apps/ios/Orange Cloud/Orange Cloud.xcodeproj`. The app targets iOS 16 and watchOS 10.6, with an embedded Apple Watch companion app.
 2. Create your own **Cloudflare OAuth client** and deploy your own callback relay (see [`apps/web/`](apps/web/README.md)) — the official client ID and the `o-c.do` relay are not available to third-party builds.
 3. Add `OPENSOURCE_UNLOCKED` to the main target's `SWIFT_ACTIVE_COMPILATION_CONDITIONS` for the full feature set.
 4. Change the Bundle ID, App Group, and signing team to your own.
@@ -92,7 +92,7 @@ Full details, including the contribution workflow and CLA, are in [CONTRIBUTING.
 
 ## 中文
 
-Orange Cloud 是一款面向 iPhone、iPad 与 Apple Watch 的 Cloudflare 第三方管理客户端，完全使用 Swift 与 SwiftUI 构建。与其他客户端不同，它通过 Cloudflare 官方 **OAuth 2.0 + PKCE** 流程登录——无需手动复制粘贴 API Token。以 iOS 17 为基线，并在支持的设备上渐进增强 iOS 18 / 26 的新能力。
+Orange Cloud 是一款面向 iPhone、iPad 与 Apple Watch 的 Cloudflare 第三方管理客户端，完全使用 Swift 与 SwiftUI 构建。与其他客户端不同，它通过 Cloudflare 官方 **OAuth 2.0 + PKCE** 流程登录——无需手动复制粘贴 API Token。以 iOS 16 为基线，并在支持的设备上渐进增强 iOS 17 / 18 / 26 的新能力。
 
 <div align="center">
 <img src="apps/web/public/shots/zh-Hans/01_dashboard.jpg" width="230" alt="概览" />
@@ -151,7 +151,7 @@ orange-cloud/
 
 ### 自行编译
 
-1. **Xcode 26 或更高版本**，打开 `apps/ios/Orange Cloud/Orange Cloud.xcodeproj`。App 面向 iOS 17 与 watchOS 10.6，并内嵌 Apple Watch 配套 App。
+1. **Xcode 26 或更高版本**，打开 `apps/ios/Orange Cloud/Orange Cloud.xcodeproj`。App 面向 iOS 16 与 watchOS 10.6，并内嵌 Apple Watch 配套 App。
 2. 自建 **Cloudflare OAuth Client** 并部署你自己的回调中转（见 [`apps/web/`](apps/web/README.md)）——官方 Client ID 与 `o-c.do` 中转不向第三方构建开放。
 3. 向主 target 的 `SWIFT_ACTIVE_COMPILATION_CONDITIONS` 添加 `OPENSOURCE_UNLOCKED` 以解锁全部功能。
 4. 将 Bundle ID、App Group 与签名团队改为你自己的。

@@ -7,12 +7,11 @@
 //
 
 import Foundation
+import Combine
 import UIKit
-import Observation
 
-@Observable
 @MainActor
-final class PushRegistrar {
+final class PushRegistrar: ObservableObject {
 
     static let shared = PushRegistrar()
 
@@ -24,8 +23,8 @@ final class PushRegistrar {
         case failed
     }
 
-    private(set) var status: Status
-    var error: String?
+    @Published private(set) var status: Status
+    @Published var error: String?
 
     var deviceKey: String? { PushConfig.deviceKey }
     var endpointURL: String? { PushConfig.endpointURL }

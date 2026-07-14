@@ -10,7 +10,7 @@ import SwiftUI
 
 struct ZoneDetailView: View {
 
-    @Environment(WatchBridge.self) private var bridge
+    @EnvironmentObject private var bridge: WatchBridge
     private let zone: WidgetZoneMetrics
     @State private var current: WidgetZoneMetrics
 
@@ -30,7 +30,6 @@ struct ZoneDetailView: View {
                             .monospacedDigit()
                             .minimumScaleFactor(0.6)
                             .lineLimit(1)
-                            .contentTransition(.numericText())
                         HStack(spacing: 4) {
                             Text("请求 · 24h")
                                 .font(.caption2)

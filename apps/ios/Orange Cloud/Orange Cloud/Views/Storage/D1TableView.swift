@@ -9,19 +9,20 @@
 import SwiftUI
 
 struct D1TableView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let database: D1Database
     let tableName: String
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: D1TableViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: D1TableViewModel
     @State private var editingRow: [String: JSONValue]?
     @State private var showDenied = false
 
     init(database: D1Database, tableName: String, session: SessionStore) {
         self.database = database
         self.tableName = tableName
-        _viewModel = State(initialValue: D1TableViewModel(
+        _viewModel = StateObject(wrappedValue: D1TableViewModel(
             service: session.d1Service,
             accountId: session.selectedAccount?.id ?? "",
             databaseId: database.uuid,
@@ -32,6 +33,8 @@ struct D1TableView: View {
     private var canWrite: Bool { auth.hasScope("d1.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.rows.isEmpty && viewModel.isLoading {
                 ScrollView {
@@ -39,7 +42,7 @@ struct D1TableView: View {
                 }
             } else if viewModel.rows.isEmpty {
                 ScrollView {
-                    ContentUnavailableView {
+                    OCContentUnavailableView {
                         Label("空表", systemImage: "tablecells")
                     } description: {
                         Text("这张表里还没有数据")
@@ -50,7 +53,7 @@ struct D1TableView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     dataTable
 
-                    Text(canWrite ? String(localized: "点按一行进行编辑。") : String(localized: "当前授权仅限读取（d1.read）。"))
+                    Text(canWrite ? AppLocalization.string(localized: "点按一行进行编辑。") : AppLocalization.string(localized: "当前授权仅限读取（d1.read）。"))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                         .padding(.horizontal, 4)
@@ -82,7 +85,7 @@ struct D1TableView: View {
         } message: {
             Text(viewModel.error ?? "")
         }
-        .sensoryFeedback(.success, trigger: viewModel.didSave)
+        .ocSensoryFeedback(.success, trigger: viewModel.didSave)
     }
 
     // MARK: - 网格骨架（表头 + 数据行的占位条）
@@ -237,8 +240,9 @@ private struct EditingRowBox: Identifiable {
 // MARK: - 行编辑器
 
 private struct D1RowEditorView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    let viewModel: D1TableViewModel
+    @ObservedObject var viewModel: D1TableViewModel
     let row: [String: JSONValue]
     let canWrite: Bool
 
@@ -277,6 +281,8 @@ private struct D1RowEditorView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
@@ -324,7 +330,7 @@ private struct D1RowEditorView: View {
                     }
                 }
             }
-            .navigationTitle("编辑行")
+            .ocNavigationTitle("编辑行")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -452,7 +458,7 @@ private struct D1RowEditorView: View {
                 )
             } label: {
                 Label(
-                    originalIsNull ? String(localized: "NULL · 点按填入当前时间") : String(localized: "填入当前时间"),
+                    originalIsNull ? AppLocalization.string(localized: "NULL · 点按填入当前时间") : AppLocalization.string(localized: "填入当前时间"),
                     systemImage: "calendar.badge.plus"
                 )
                 .font(.callout)

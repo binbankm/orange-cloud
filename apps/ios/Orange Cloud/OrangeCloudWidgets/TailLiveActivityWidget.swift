@@ -11,6 +11,7 @@ import WidgetKit
 import SwiftUI
 import ActivityKit
 
+@available(iOSApplicationExtension 16.1, *)
 struct TailLiveActivityWidget: Widget {
 
     var body: some WidgetConfiguration {
@@ -56,6 +57,7 @@ struct TailLiveActivityWidget: Widget {
     }
 }
 
+@available(iOSApplicationExtension 16.1, *)
 private struct LockScreenTailView: View {
 
     let context: ActivityViewContext<TailActivityAttributes>
@@ -79,25 +81,33 @@ private struct LockScreenTailView: View {
             Text(context.state.lastLine.isEmpty ? String(localized: "正在监听实时日志…") : context.state.lastLine)
                 .font(.caption.monospaced())
                 .lineLimit(2)
-                .foregroundStyle(context.isStale ? .secondary : .primary)
+                .foregroundStyle(context.tailIsStale ? .secondary : .primary)
         }
         .padding()
     }
 }
 
 // 三态渲染：stale（后台挂起）灰、连接中绿、断开红
+@available(iOSApplicationExtension 16.1, *)
 private extension ActivityViewContext where Attributes == TailActivityAttributes {
+    var tailIsStale: Bool {
+        if #available(iOSApplicationExtension 16.2, *) {
+            return isStale
+        }
+        return false
+    }
+
     var dotColor: Color {
-        if isStale { return .gray }
+        if tailIsStale { return .gray }
         return state.isConnected ? .green : .red
     }
 
     var iconColor: Color {
-        isStale ? .gray : .ocOrange
+        tailIsStale ? .gray : .ocOrange
     }
 
     /// 停滞时直说「已暂停」，否则显示累计事件数
     var countLabel: String {
-        isStale ? String(localized: "已暂停") : String(localized: "\(state.eventCount) 事件")
+        tailIsStale ? String(localized: "已暂停") : String(localized: "\(state.eventCount) 事件")
     }
 }

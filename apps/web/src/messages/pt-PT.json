@@ -30,7 +30,7 @@
 		"title1": "A sua Cloudflare,",
 		"title2": "num relance",
 		"sub": "Domínios, DNS, análise, registos de Workers e armazenamento, num céu que acompanha a hora do dia. Início de sessão com OAuth oficial, sem colar tokens de API.",
-		"note": "iOS 17.0+ / Android 9+ · Transferência gratuita, Pro opcional"
+		"note": "iOS 16.0+ / Android 9+ · Transferência gratuita, Pro opcional"
 	},
 	"phone": {
 		"greetMorning": "Bom dia, Jiamin",
@@ -121,13 +121,13 @@
 	"cta": {
 		"title": "Leve a Cloudflare no bolso",
 		"sub": "O céu desta noite já espera por si na app.",
-		"requirement": "Requer iOS 17.0+ ou Android 9+ · iPhone, iPad e Android"
+		"requirement": "Requer iOS 16.0+ ou Android 9+ · iPhone, iPad e Android"
 	},
 	"changelog": {
 		"title": "Histórico de versões",
 		"sub": "O Orange Cloud já está na App Store. Este é o histórico de versões; também pode juntar-se ao TestFlight para experimentar as próximas builds antes dos outros.",
 		"tfButton": "Juntar-se ao TestFlight",
-		"tfNote": "Requer iOS 17.0 ou posterior · Apenas dispositivos Apple",
+		"tfNote": "Requer iOS 16.0 ou posterior · Apenas dispositivos Apple",
 		"androidSoon": "A app para Android chega em breve à Google Play",
 		"statusInReview": "Em análise"
 	},

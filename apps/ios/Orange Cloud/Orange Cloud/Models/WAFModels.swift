@@ -30,13 +30,13 @@ nonisolated struct WAFRule: Codable, Identifiable, Hashable, Sendable {
 
     var actionText: String {
         switch action {
-        case "block":             String(localized: "拦截")
-        case "challenge":         String(localized: "质询")
-        case "managed_challenge": String(localized: "托管质询")
-        case "js_challenge":      String(localized: "JS 质询")
-        case "log":               String(localized: "记录")
-        case "skip":              String(localized: "跳过")
-        case "allow":             String(localized: "放行")
+        case "block":             AppLocalization.string(localized: "拦截")
+        case "challenge":         AppLocalization.string(localized: "质询")
+        case "managed_challenge": AppLocalization.string(localized: "托管质询")
+        case "js_challenge":      AppLocalization.string(localized: "JS 质询")
+        case "log":               AppLocalization.string(localized: "记录")
+        case "skip":              AppLocalization.string(localized: "跳过")
+        case "allow":             AppLocalization.string(localized: "放行")
         default:                  action ?? "—"
         }
     }
@@ -88,15 +88,15 @@ nonisolated enum WAFOperator: String, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .eq:       String(localized: "等于")
-        case .ne:       String(localized: "不等于")
-        case .contains: String(localized: "包含")
-        case .matches:  String(localized: "匹配正则")
-        case .isin:     String(localized: "属于")
-        case .gt:       String(localized: "大于")
-        case .ge:       String(localized: "大于等于")
-        case .lt:       String(localized: "小于")
-        case .le:       String(localized: "小于等于")
+        case .eq:       AppLocalization.string(localized: "等于")
+        case .ne:       AppLocalization.string(localized: "不等于")
+        case .contains: AppLocalization.string(localized: "包含")
+        case .matches:  AppLocalization.string(localized: "匹配正则")
+        case .isin:     AppLocalization.string(localized: "属于")
+        case .gt:       AppLocalization.string(localized: "大于")
+        case .ge:       AppLocalization.string(localized: "大于等于")
+        case .lt:       AppLocalization.string(localized: "小于")
+        case .le:       AppLocalization.string(localized: "小于等于")
         }
     }
 
@@ -114,25 +114,25 @@ nonisolated enum WAFConditionLogic: String, CaseIterable, Identifiable, Sendable
     case and, or
     var id: String { rawValue }
     var token: String { rawValue }
-    var label: String { self == .and ? String(localized: "满足全部") : String(localized: "满足任一") }
+    var label: String { self == .and ? AppLocalization.string(localized: "满足全部") : AppLocalization.string(localized: "满足任一") }
 }
 
 nonisolated enum WAFExpressionCatalog {
     static let fields: [WAFField] = [
-        WAFField(field: "http.host",                label: String(localized: "主机名"),      type: .string),
-        WAFField(field: "http.request.uri.path",    label: String(localized: "URI 路径"),    type: .string),
-        WAFField(field: "http.request.uri.query",   label: String(localized: "查询字符串"),  type: .string),
-        WAFField(field: "http.request.full_uri",    label: String(localized: "完整 URL"),    type: .string),
-        WAFField(field: "http.request.method",      label: String(localized: "请求方法"),    type: .string),
+        WAFField(field: "http.host",                label: AppLocalization.string(localized: "主机名"),      type: .string),
+        WAFField(field: "http.request.uri.path",    label: AppLocalization.string(localized: "URI 路径"),    type: .string),
+        WAFField(field: "http.request.uri.query",   label: AppLocalization.string(localized: "查询字符串"),  type: .string),
+        WAFField(field: "http.request.full_uri",    label: AppLocalization.string(localized: "完整 URL"),    type: .string),
+        WAFField(field: "http.request.method",      label: AppLocalization.string(localized: "请求方法"),    type: .string),
         WAFField(field: "http.user_agent",          label: "User-Agent",                     type: .string),
         WAFField(field: "http.referer",             label: "Referer",                        type: .string),
         WAFField(field: "http.cookie",              label: "Cookie",                         type: .string),
-        WAFField(field: "http.request.version",     label: String(localized: "HTTP 版本"),   type: .string),
-        WAFField(field: "ip.src",                   label: String(localized: "来源 IP"),     type: .ip),
-        WAFField(field: "ip.src.country",           label: String(localized: "来源国家"),    type: .country),
+        WAFField(field: "http.request.version",     label: AppLocalization.string(localized: "HTTP 版本"),   type: .string),
+        WAFField(field: "ip.src",                   label: AppLocalization.string(localized: "来源 IP"),     type: .ip),
+        WAFField(field: "ip.src.country",           label: AppLocalization.string(localized: "来源国家"),    type: .country),
         WAFField(field: "ip.src.asnum",             label: "ASN",                            type: .number),
-        WAFField(field: "cf.threat_score",          label: String(localized: "威胁分数"),    type: .number),
-        WAFField(field: "cf.bot_management.score",  label: String(localized: "Bot 分数"),    type: .number),
+        WAFField(field: "cf.threat_score",          label: AppLocalization.string(localized: "威胁分数"),    type: .number),
+        WAFField(field: "cf.bot_management.score",  label: AppLocalization.string(localized: "Bot 分数"),    type: .number),
     ]
 
     static func field(for key: String) -> WAFField? { fields.first { $0.field == key } }
@@ -198,11 +198,11 @@ nonisolated enum WAFRuleAction: String, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .block:            String(localized: "拦截")
-        case .managedChallenge: String(localized: "托管质询")
-        case .jsChallenge:      String(localized: "JS 质询")
-        case .challenge:        String(localized: "质询")
-        case .log:              String(localized: "仅记录")
+        case .block:            AppLocalization.string(localized: "拦截")
+        case .managedChallenge: AppLocalization.string(localized: "托管质询")
+        case .jsChallenge:      AppLocalization.string(localized: "JS 质询")
+        case .challenge:        AppLocalization.string(localized: "质询")
+        case .log:              AppLocalization.string(localized: "仅记录")
         }
     }
 }

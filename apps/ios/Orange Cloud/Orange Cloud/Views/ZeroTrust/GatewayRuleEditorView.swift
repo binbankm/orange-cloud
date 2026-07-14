@@ -11,6 +11,7 @@
 import SwiftUI
 
 struct GatewayRuleEditorView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     enum Mode {
         case create
@@ -18,7 +19,7 @@ struct GatewayRuleEditorView: View {
     }
 
     let mode: Mode
-    let viewModel: GatewayRulesViewModel
+    @ObservedObject var viewModel: GatewayRulesViewModel
 
     @Environment(\.dismiss) private var dismiss
 
@@ -49,6 +50,8 @@ struct GatewayRuleEditorView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
@@ -90,7 +93,7 @@ struct GatewayRuleEditorView: View {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle(isEdit ? String(localized: "编辑策略") : String(localized: "新建策略"))
+            .navigationTitle(isEdit ? AppLocalization.string(localized: "编辑策略") : AppLocalization.string(localized: "新建策略"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -107,7 +110,7 @@ struct GatewayRuleEditorView: View {
             }
             .interactiveDismissDisabled(viewModel.isSaving)
             .onAppear(perform: prefill)
-            .onChange(of: type) { _, newType in
+            .onChange(of: type) { newType in
                 // 切换类型后，若当前动作不在新类型动作集中，回落到首个合法动作
                 if !newType.actions.contains(where: { $0.value == action }) {
                     action = newType.actions.first?.value ?? newType.defaultAction

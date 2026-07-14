@@ -8,13 +8,17 @@
 import SwiftUI
 
 struct CFAlertingView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let endpointURL: String
 
-    @Environment(AuthManager.self) private var auth
-    @State private var vm: CFAlertingViewModel?
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var vmStore = OptionalObservableObjectStore()
+    private var vm: CFAlertingViewModel? { vmStore.value(as: CFAlertingViewModel.self) }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if !auth.hasScope("notifications.read") {
                 noScope
@@ -25,10 +29,10 @@ struct CFAlertingView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("CF 告警推送")
+        .ocNavigationTitle("CF 告警推送")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            if vm == nil { vm = CFAlertingViewModel(auth: auth, endpointURL: endpointURL) }
+            if vm == nil { vmStore.set(CFAlertingViewModel(auth: auth, endpointURL: endpointURL)) }
             await vm?.load()
         }
     }
@@ -38,7 +42,7 @@ struct CFAlertingView: View {
             ToolNotice(
                 systemImage: "lock",
                 title: "需要「通知」权限",
-                message: String(localized: "管理 Cloudflare 告警需要 Notifications 权限。请到 设置 → 你的账号 重新登录以授予。"),
+                message: AppLocalization.string(localized: "管理 Cloudflare 告警需要 Notifications 权限。请到 设置 → 你的账号 重新登录以授予。"),
                 tint: .orange
             )
             .padding(OCLayout.pagePadding)
@@ -79,7 +83,7 @@ struct CFAlertingView: View {
                 TintIcon(systemImage: "person.crop.circle", color: .ocOrange)
                 Text("账号").foregroundStyle(.secondary)
                 Spacer()
-                Text(vm.accounts.first(where: { $0.id == vm.selectedAccountId })?.name ?? String(localized: "选择"))
+                Text(vm.accounts.first(where: { $0.id == vm.selectedAccountId })?.name ?? AppLocalization.string(localized: "选择"))
                     .foregroundStyle(.primary)
                 Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(.tertiary)
             }

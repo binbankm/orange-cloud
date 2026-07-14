@@ -9,7 +9,7 @@ import SwiftUI
 
 struct HTTPProbeToolView: View {
 
-    @State private var vm = HTTPProbeViewModel()
+    @StateObject private var vm = HTTPProbeViewModel()
 
     var body: some View {
         ScrollView {
@@ -74,7 +74,7 @@ struct HTTPProbeToolView: View {
             .padding(OCLayout.pagePadding)
         }
         .background { SkyBackground() }
-        .navigationTitle("HTTP 请求")
+        .ocNavigationTitle("HTTP 请求")
         .navigationBarTitleDisplayMode(.inline)
     }
 

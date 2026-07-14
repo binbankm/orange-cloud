@@ -34,11 +34,11 @@ nonisolated struct StatusPageOverall: Codable, Sendable {
     /// 总体状态的本地化描述（未知 indicator 时透出官方英文原文）
     var localizedText: String {
         switch indicator {
-        case "none":        String(localized: "所有系统正常运行")
-        case "minor":       String(localized: "部分服务轻微异常")
-        case "major":       String(localized: "部分服务严重异常")
-        case "critical":    String(localized: "重大服务中断")
-        case "maintenance": String(localized: "维护进行中")
+        case "none":        AppLocalization.string(localized: "所有系统正常运行")
+        case "minor":       AppLocalization.string(localized: "部分服务轻微异常")
+        case "major":       AppLocalization.string(localized: "部分服务严重异常")
+        case "critical":    AppLocalization.string(localized: "重大服务中断")
+        case "maintenance": AppLocalization.string(localized: "维护进行中")
         default:            description
         }
     }
@@ -58,11 +58,11 @@ nonisolated struct StatusPageComponent: Codable, Identifiable, Sendable {
 
     var statusText: String {
         switch status {
-        case "operational":          String(localized: "正常")
-        case "degraded_performance": String(localized: "性能下降")
-        case "partial_outage":       String(localized: "部分中断")
-        case "major_outage":         String(localized: "大面积中断")
-        case "under_maintenance":    String(localized: "维护中")
+        case "operational":          AppLocalization.string(localized: "正常")
+        case "degraded_performance": AppLocalization.string(localized: "性能下降")
+        case "partial_outage":       AppLocalization.string(localized: "部分中断")
+        case "major_outage":         AppLocalization.string(localized: "大面积中断")
+        case "under_maintenance":    AppLocalization.string(localized: "维护中")
         default:                     status
         }
     }
@@ -77,13 +77,13 @@ nonisolated struct StatusPageRegion: Identifiable, Sendable {
 
     var localizedName: String {
         switch name {
-        case "Africa":                        String(localized: "非洲")
-        case "Asia":                          String(localized: "亚洲")
-        case "Europe":                        String(localized: "欧洲")
-        case "Latin America & the Caribbean": String(localized: "拉丁美洲和加勒比")
-        case "Middle East":                   String(localized: "中东")
-        case "North America":                 String(localized: "北美")
-        case "Oceania":                       String(localized: "大洋洲")
+        case "Africa":                        AppLocalization.string(localized: "非洲")
+        case "Asia":                          AppLocalization.string(localized: "亚洲")
+        case "Europe":                        AppLocalization.string(localized: "欧洲")
+        case "Latin America & the Caribbean": AppLocalization.string(localized: "拉丁美洲和加勒比")
+        case "Middle East":                   AppLocalization.string(localized: "中东")
+        case "North America":                 AppLocalization.string(localized: "北美")
+        case "Oceania":                       AppLocalization.string(localized: "大洋洲")
         default:                              name
         }
     }
@@ -111,15 +111,15 @@ nonisolated struct StatusPageIncident: Codable, Identifiable, Sendable {
 
     static func statusText(_ status: String) -> String {
         switch status {
-        case "investigating": String(localized: "调查中")
-        case "identified":    String(localized: "已定位")
-        case "monitoring":    String(localized: "监控中")
-        case "resolved":      String(localized: "已解决")
-        case "postmortem":    String(localized: "事后分析")
-        case "scheduled":     String(localized: "已排期")
-        case "in_progress":   String(localized: "进行中")
-        case "verifying":     String(localized: "验证中")
-        case "completed":     String(localized: "已完成")
+        case "investigating": AppLocalization.string(localized: "调查中")
+        case "identified":    AppLocalization.string(localized: "已定位")
+        case "monitoring":    AppLocalization.string(localized: "监控中")
+        case "resolved":      AppLocalization.string(localized: "已解决")
+        case "postmortem":    AppLocalization.string(localized: "事后分析")
+        case "scheduled":     AppLocalization.string(localized: "已排期")
+        case "in_progress":   AppLocalization.string(localized: "进行中")
+        case "verifying":     AppLocalization.string(localized: "验证中")
+        case "completed":     AppLocalization.string(localized: "已完成")
         default:              status
         }
     }
@@ -128,11 +128,11 @@ nonisolated struct StatusPageIncident: Codable, Identifiable, Sendable {
 
     var impactText: String {
         switch impact {
-        case "critical":    String(localized: "重大")
-        case "major":       String(localized: "严重")
-        case "minor":       String(localized: "轻微")
-        case "maintenance": String(localized: "维护")
-        case "none":        String(localized: "无影响")
+        case "critical":    AppLocalization.string(localized: "重大")
+        case "major":       AppLocalization.string(localized: "严重")
+        case "minor":       AppLocalization.string(localized: "轻微")
+        case "maintenance": AppLocalization.string(localized: "维护")
+        case "none":        AppLocalization.string(localized: "无影响")
         default:            impact
         }
     }

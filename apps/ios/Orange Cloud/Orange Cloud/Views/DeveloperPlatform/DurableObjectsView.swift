@@ -9,17 +9,21 @@
 import SwiftUI
 
 struct DurableObjectsView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let session: SessionStore
-    @State private var vm: DurableObjectsViewModel?
+    @StateObject private var vmStore = OptionalObservableObjectStore()
+    private var vm: DurableObjectsViewModel? { vmStore.value(as: DurableObjectsViewModel.self) }
     @State private var detailTarget: DurableObjectNamespace?
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if let vm { content(vm) } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
         }
         .background { SkyBackground() }
-        .navigationTitle("Durable Objects")
+        .ocNavigationTitle("Durable Objects")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $detailTarget) { ns in
             DurableObjectInstancesSheet(session: session, namespace: ns)
@@ -28,7 +32,7 @@ struct DurableObjectsView: View {
             await session.ensureAccounts()
             guard vm == nil else { return }
             let model = DurableObjectsViewModel(service: session.durableObjectService, accountId: session.selectedAccount?.id)
-            vm = model
+            vmStore.set(model)
             await model.load()
         }
     }
@@ -38,10 +42,10 @@ struct DurableObjectsView: View {
         if vm.isLoading && !vm.loaded {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if vm.namespaces.isEmpty {
-            ContentUnavailableView {
-                Label("没有 Durable Objects", systemImage: "cube.transparent")
+            OCContentUnavailableView {
+                Label(AppLocalization.string(localized: "没有 Durable Objects"), systemImage: "cube.transparent")
             } description: {
-                Text(vm.error ?? String(localized: "该账号下还没有 Durable Object 命名空间。命名空间由 Worker 迁移声明。"))
+                Text(vm.error ?? AppLocalization.string(localized: "该账号下还没有 Durable Object 命名空间。命名空间由 Worker 迁移声明。"))
             }
         } else {
             List {
@@ -54,7 +58,7 @@ struct DurableObjectsView: View {
                                         Text(ns.name ?? ns.className ?? ns.id)
                                             .font(.callout.weight(.semibold)).lineLimit(1).foregroundStyle(.primary)
                                         if ns.useSqlite == true {
-                                            Text("SQLite").font(.caption2.weight(.semibold))
+                                            Text.ocLocalized("SQLite").font(.caption2.weight(.semibold))
                                                 .foregroundStyle(Color.ocOrangeText)
                                                 .padding(.horizontal, 6).padding(.vertical, 2)
                                                 .background(Color.ocOrange.opacity(0.14), in: Capsule())
@@ -76,7 +80,7 @@ struct DurableObjectsView: View {
                         .buttonStyle(.plain)
                     }
                 } footer: {
-                    Text("点按浏览对象实例 · 命名空间的增删改请在 Worker 迁移中进行。")
+                    Text.ocLocalized("点按浏览对象实例 · 命名空间的增删改请在 Worker 迁移中进行。")
                 }
                 .glassRow()
             }
@@ -89,13 +93,17 @@ struct DurableObjectsView: View {
 // MARK: - 对象实例浏览 sheet（只读，游标分页）
 
 private struct DurableObjectInstancesSheet: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let session: SessionStore
     let namespace: DurableObjectNamespace
 
     @Environment(\.dismiss) private var dismiss
-    @State private var vm: DurableObjectInstancesViewModel?
+    @StateObject private var vmStore = OptionalObservableObjectStore()
+    private var vm: DurableObjectInstancesViewModel? { vmStore.value(as: DurableObjectInstancesViewModel.self) }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Group {
                 if let vm { content(vm) } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
@@ -104,7 +112,7 @@ private struct DurableObjectInstancesSheet: View {
             .navigationTitle(namespace.name ?? namespace.className ?? namespace.id)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(AppLocalization.string(localized: "完成")) { dismiss() } }
             }
             .task {
                 guard vm == nil else { return }
@@ -113,7 +121,7 @@ private struct DurableObjectInstancesSheet: View {
                     accountId: session.selectedAccount?.id,
                     namespaceId: namespace.id
                 )
-                vm = model
+                vmStore.set(model)
                 await model.load()
             }
         }
@@ -124,10 +132,10 @@ private struct DurableObjectInstancesSheet: View {
         if vm.isLoading && !vm.loaded {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if vm.instances.isEmpty {
-            ContentUnavailableView {
-                Label("没有对象", systemImage: "cube")
+            OCContentUnavailableView {
+                Label(AppLocalization.string(localized: "没有对象"), systemImage: "cube")
             } description: {
-                Text(vm.error ?? String(localized: "该命名空间下还没有对象实例。对象在首次被访问时自动创建。"))
+                Text(vm.error ?? AppLocalization.string(localized: "该命名空间下还没有对象实例。对象在首次被访问时自动创建。"))
             }
         } else {
             List {
@@ -137,7 +145,7 @@ private struct DurableObjectInstancesSheet: View {
                             Text(obj.id).font(.caption.monospaced()).lineLimit(1).truncationMode(.middle)
                             Spacer()
                             if obj.hasStoredData == true {
-                                Text("有数据").font(.caption2.weight(.semibold))
+                                Text.ocLocalized("有数据").font(.caption2.weight(.semibold))
                                     .foregroundStyle(Color.ocOrangeText)
                                     .padding(.horizontal, 6).padding(.vertical, 2)
                                     .background(Color.ocOrange.opacity(0.14), in: Capsule())
@@ -151,16 +159,16 @@ private struct DurableObjectInstancesSheet: View {
                         } label: {
                             HStack {
                                 Spacer()
-                                if vm.isLoading { ProgressView() } else { Text("加载更多") }
+                                if vm.isLoading { ProgressView() } else { Text.ocLocalized("加载更多") }
                                 Spacer()
                             }
                         }
                         .disabled(vm.isLoading)
                     }
                 } header: {
-                    Text("\(vm.instances.count) 个对象")
+                    Text.ocLocalized("\(vm.instances.count) 个对象")
                 } footer: {
-                    Text("对象实例只读：展示对象 ID 与是否已写入存储。")
+                    Text.ocLocalized("对象实例只读：展示对象 ID 与是否已写入存储。")
                 }
                 .glassRow()
             }

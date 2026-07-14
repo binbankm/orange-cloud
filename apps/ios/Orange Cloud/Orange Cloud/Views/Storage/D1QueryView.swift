@@ -11,19 +11,20 @@ import SwiftUI
 // MARK: - SQL 查询控制台
 
 struct D1QueryView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let database: D1Database
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: D1QueryViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: D1QueryViewModel
     @State private var showLimitReminder = false
     @FocusState private var sqlFocused: Bool
 
     init(database: D1Database, session: SessionStore) {
         self.database = database
         self.session = session
-        _viewModel = State(initialValue: D1QueryViewModel(
+        _viewModel = StateObject(wrappedValue: D1QueryViewModel(
             service: session.d1Service,
             accountId: session.selectedAccount?.id ?? "",
             databaseId: database.uuid
@@ -33,6 +34,8 @@ struct D1QueryView: View {
     private var canWrite: Bool { auth.hasScope("d1.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 tablesIsland
@@ -83,7 +86,7 @@ struct D1QueryView: View {
                 .disabled(viewModel.isRunning)
             }
         }
-        .sensoryFeedback(.success, trigger: viewModel.didRun)
+        .ocSensoryFeedback(.success, trigger: viewModel.didRun)
         .confirmationDialog("查询未带 LIMIT", isPresented: $showLimitReminder, titleVisibility: .visible) {
             Button("仍要执行") {
                 Task { await viewModel.run() }
@@ -175,6 +178,7 @@ struct D1QueryView: View {
 // MARK: - 结果卡片
 
 private struct D1ResultCard: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let result: D1QueryResult
     let index: Int
@@ -194,6 +198,8 @@ private struct D1ResultCard: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         VStack(alignment: .leading, spacing: 8) {
             if total > 1 {
                 Text("语句 \(index + 1)")
@@ -202,7 +208,7 @@ private struct D1ResultCard: View {
             }
 
             if rows.isEmpty {
-                Label(result.success ? String(localized: "执行成功，无返回行") : String(localized: "执行失败"), systemImage: result.success ? "checkmark.circle" : "xmark.circle")
+                Label(result.success ? AppLocalization.string(localized: "执行成功，无返回行") : AppLocalization.string(localized: "执行失败"), systemImage: result.success ? "checkmark.circle" : "xmark.circle")
                     .font(.callout)
                     .foregroundStyle(result.success ? .green : .red)
             } else {

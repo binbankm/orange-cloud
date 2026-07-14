@@ -9,14 +9,15 @@
 import SwiftUI
 
 struct ZoneSSLSettingsView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let zoneName: String
-    @State private var viewModel: ZoneSSLViewModel
-    @Environment(AuthManager.self) private var auth
+    @StateObject private var viewModel: ZoneSSLViewModel
+    @EnvironmentObject private var auth: AuthManager
 
     init(zoneId: String, zoneName: String, session: SessionStore) {
         self.zoneName = zoneName
-        _viewModel = State(initialValue: ZoneSSLViewModel(
+        _viewModel = StateObject(wrappedValue: ZoneSSLViewModel(
             service: session.zoneSettingsService, zoneId: zoneId
         ))
     }
@@ -24,6 +25,8 @@ struct ZoneSSLSettingsView: View {
     private var canEdit: Bool { auth.hasScope("zone-settings.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 if !viewModel.loaded {
@@ -32,8 +35,8 @@ struct ZoneSSLSettingsView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, 60)
                     } else {
-                        ContentUnavailableView {
-                            Label(String(localized: "无法读取 SSL/TLS 设置"), systemImage: "lock")
+                        OCContentUnavailableView {
+                            Label(AppLocalization.string(localized: "无法读取 SSL/TLS 设置"), systemImage: "lock")
                         } description: {
                             Text("当前授权未包含「缓存与防护」的读取权限。请退出登录后重新授权。")
                         }
@@ -71,7 +74,7 @@ struct ZoneSSLSettingsView: View {
     // MARK: - 加密模式
 
     private var encryptionCard: some View {
-        card(String(localized: "加密")) {
+        card(AppLocalization.string(localized: "加密")) {
             HStack(spacing: 12) {
                 TintIcon(systemImage: "lock.shield", color: .green)
                 VStack(alignment: .leading, spacing: 1) {
@@ -84,7 +87,7 @@ struct ZoneSSLSettingsView: View {
                 if viewModel.updating.contains("ssl") {
                     ProgressView()
                 } else {
-                    Picker(String(localized: "加密模式"), selection: Binding(
+                    Picker(AppLocalization.string(localized: "加密模式"), selection: Binding(
                         get: { viewModel.sslMode },
                         set: { mode in Task { await viewModel.setSSLMode(mode) } }
                     )) {
@@ -100,19 +103,19 @@ struct ZoneSSLSettingsView: View {
     // MARK: - HTTPS
 
     private var httpsCard: some View {
-        card(String(localized: "HTTPS")) {
+        card(AppLocalization.string(localized: "HTTPS")) {
             VStack(spacing: 16) {
                 toggleRow(
-                    title: String(localized: "始终使用 HTTPS"),
-                    subtitle: String(localized: "把所有 HTTP 请求重定向到 HTTPS"),
+                    title: AppLocalization.string(localized: "始终使用 HTTPS"),
+                    subtitle: AppLocalization.string(localized: "把所有 HTTP 请求重定向到 HTTPS"),
                     icon: "arrow.uturn.up", tint: .blue,
                     setting: "always_use_https",
                     isOn: viewModel.alwaysUseHTTPS,
                     set: { on in Task { await viewModel.setAlwaysUseHTTPS(on) } }
                 )
                 toggleRow(
-                    title: String(localized: "自动 HTTPS 重写"),
-                    subtitle: String(localized: "把页面内的 HTTP 链接改写为 HTTPS"),
+                    title: AppLocalization.string(localized: "自动 HTTPS 重写"),
+                    subtitle: AppLocalization.string(localized: "把页面内的 HTTP 链接改写为 HTTPS"),
                     icon: "link", tint: .blue,
                     setting: "automatic_https_rewrites",
                     isOn: viewModel.autoHTTPSRewrites,
@@ -125,7 +128,7 @@ struct ZoneSSLSettingsView: View {
     // MARK: - TLS 版本
 
     private var tlsCard: some View {
-        card(String(localized: "TLS 版本")) {
+        card(AppLocalization.string(localized: "TLS 版本")) {
             VStack(spacing: 16) {
                 HStack(spacing: 12) {
                     TintIcon(systemImage: "checkmark.shield", color: .green)
@@ -139,7 +142,7 @@ struct ZoneSSLSettingsView: View {
                     if viewModel.updating.contains("min_tls_version") {
                         ProgressView()
                     } else {
-                        Picker(String(localized: "最低 TLS 版本"), selection: Binding(
+                        Picker(AppLocalization.string(localized: "最低 TLS 版本"), selection: Binding(
                             get: { viewModel.minTLS },
                             set: { v in Task { await viewModel.setMinTLS(v) } }
                         )) {
@@ -150,8 +153,8 @@ struct ZoneSSLSettingsView: View {
                     }
                 }
                 toggleRow(
-                    title: String(localized: "TLS 1.3"),
-                    subtitle: String(localized: "启用最新的 TLS 1.3 协议"),
+                    title: AppLocalization.string(localized: "TLS 1.3"),
+                    subtitle: AppLocalization.string(localized: "启用最新的 TLS 1.3 协议"),
                     icon: "bolt.shield", tint: .green,
                     setting: "tls_1_3",
                     isOn: viewModel.tls13,

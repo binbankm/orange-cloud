@@ -9,7 +9,7 @@ import SwiftUI
 
 struct GeoIPToolView: View {
 
-    @State private var vm = GeoIPViewModel()
+    @StateObject private var vm = GeoIPViewModel()
 
     var body: some View {
         ScrollView {
@@ -44,7 +44,7 @@ struct GeoIPToolView: View {
             .padding(OCLayout.pagePadding)
         }
         .background { SkyBackground() }
-        .navigationTitle("IP 归属地")
+        .ocNavigationTitle("IP 归属地")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if !vm.hasRun { await vm.run() }

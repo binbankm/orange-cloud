@@ -9,15 +9,16 @@
 import SwiftUI
 
 struct WorkerSecretsView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: WorkerBindingsViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: WorkerBindingsViewModel
     @State private var sheet: EditorSheet?
     @State private var secretToDelete: WorkerSecret?
     @State private var variableToDelete: WorkerBinding?
 
     init(accountId: String, scriptName: String, session: SessionStore) {
-        _viewModel = State(initialValue: WorkerBindingsViewModel(
+        _viewModel = StateObject(wrappedValue: WorkerBindingsViewModel(
             service: session.workerService, accountId: accountId, scriptName: scriptName
         ))
     }
@@ -25,6 +26,8 @@ struct WorkerSecretsView: View {
     private var canWrite: Bool { auth.hasScope("workers-scripts.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if !viewModel.loaded && viewModel.isLoading {
                 SkeletonList(rows: 5, icon: .none, trailing: true)
@@ -41,7 +44,7 @@ struct WorkerSecretsView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("变量与密钥")
+        .ocNavigationTitle("变量与密钥")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if canWrite {
@@ -53,7 +56,7 @@ struct WorkerSecretsView: View {
             }
         }
         .confirmationDialog(
-            secretToDelete.map { String(localized: "删除密钥「\($0.name)」？") } ?? "",
+            secretToDelete.map { AppLocalization.string(localized: "删除密钥「\($0.name)」？") } ?? "",
             isPresented: Binding(get: { secretToDelete != nil }, set: { if !$0 { secretToDelete = nil } }),
             titleVisibility: .visible
         ) {
@@ -64,7 +67,7 @@ struct WorkerSecretsView: View {
             Text("密钥值无法读回，删除后需重新设置，不可撤销。")
         }
         .confirmationDialog(
-            variableToDelete.map { String(localized: "删除变量「\($0.name)」？") } ?? "",
+            variableToDelete.map { AppLocalization.string(localized: "删除变量「\($0.name)」？") } ?? "",
             isPresented: Binding(get: { variableToDelete != nil }, set: { if !$0 { variableToDelete = nil } }),
             titleVisibility: .visible
         ) {
@@ -124,8 +127,8 @@ struct WorkerSecretsView: View {
             Text("密钥")
         } footer: {
             Text(canWrite
-                 ? String(localized: "密钥值出于安全无法读取，列表只显示名称。同名添加即覆盖。")
-                 : String(localized: "当前授权仅可查看（缺少 workers-scripts.write）。"))
+                 ? AppLocalization.string(localized: "密钥值出于安全无法读取，列表只显示名称。同名添加即覆盖。")
+                 : AppLocalization.string(localized: "当前授权仅可查看（缺少 workers-scripts.write）。"))
         }
         .glassRow()
     }
@@ -222,9 +225,10 @@ private enum EditorSheet: Identifiable {
 }
 
 private struct WorkerValueEditorSheet: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let kind: EditorSheet
-    let viewModel: WorkerBindingsViewModel
+    @ObservedObject var viewModel: WorkerBindingsViewModel
 
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
@@ -248,11 +252,13 @@ private struct WorkerValueEditorSheet: View {
     }
 
     private var title: String {
-        if isSecret { return String(localized: "添加密钥") }
-        return lockedName == nil ? String(localized: "添加变量") : String(localized: "编辑变量")
+        if isSecret { return AppLocalization.string(localized: "添加密钥") }
+        return lockedName == nil ? AppLocalization.string(localized: "添加变量") : AppLocalization.string(localized: "编辑变量")
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
@@ -286,7 +292,7 @@ private struct WorkerValueEditorSheet: View {
                             .lineLimit(1...6)
                     }
                 } header: {
-                    Text(isSecret ? String(localized: "值（保存后不可读取）") : String(localized: "值"))
+                    Text(isSecret ? AppLocalization.string(localized: "值（保存后不可读取）") : AppLocalization.string(localized: "值"))
                 }
 
                 if let error = viewModel.error {
@@ -344,8 +350,9 @@ private struct BulkParseError: Error {
 }
 
 private struct WorkerBulkImportSheet: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    let viewModel: WorkerBindingsViewModel
+    @ObservedObject var viewModel: WorkerBindingsViewModel
 
     @Environment(\.dismiss) private var dismiss
     @State private var target: BulkImportTarget = .variable
@@ -373,6 +380,8 @@ private struct WorkerBulkImportSheet: View {
     private var canImport: Bool { !pairs.isEmpty && !viewModel.isSaving }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
@@ -382,8 +391,8 @@ private struct WorkerBulkImportSheet: View {
                     .pickerStyle(.segmented)
                 } footer: {
                     Text(target == .secret
-                         ? String(localized: "作为密钥写入，逐个保存；同名将被覆盖，保存后不可读取。")
-                         : String(localized: "作为明文变量一次性写入；同名将被覆盖，不影响其它绑定。"))
+                         ? AppLocalization.string(localized: "作为密钥写入，逐个保存；同名将被覆盖，保存后不可读取。")
+                         : AppLocalization.string(localized: "作为明文变量一次性写入；同名将被覆盖，不影响其它绑定。"))
                 }
 
                 Section {
@@ -408,7 +417,7 @@ private struct WorkerBulkImportSheet: View {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("批量导入")
+            .ocNavigationTitle("批量导入")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -444,10 +453,10 @@ private struct WorkerBulkImportSheet: View {
         guard !trimmed.isEmpty else { return .success([]) }
         guard let data = trimmed.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data) else {
-            return .failure(BulkParseError(message: String(localized: "不是有效的 JSON")))
+            return .failure(BulkParseError(message: AppLocalization.string(localized: "不是有效的 JSON")))
         }
         guard let dict = object as? [String: Any] else {
-            return .failure(BulkParseError(message: String(localized: "需要一个 JSON 对象，形如 {\"KEY\": \"值\"}")))
+            return .failure(BulkParseError(message: AppLocalization.string(localized: "需要一个 JSON 对象，形如 {\"KEY\": \"值\"}")))
         }
         let keyPattern = "^[A-Za-z_][A-Za-z0-9_]*$"
         var pairs: [(name: String, value: String)] = []
@@ -463,13 +472,13 @@ private struct WorkerBulkImportSheet: View {
             } else if let n = raw as? NSNumber {
                 value = CFGetTypeID(n) == CFBooleanGetTypeID() ? (n.boolValue ? "true" : "false") : n.stringValue
             } else {
-                return .failure(BulkParseError(message: String(localized: "键「\(key)」的值必须是字符串或数字")))
+                return .failure(BulkParseError(message: AppLocalization.string(localized: "键「\(key)」的值必须是字符串或数字")))
             }
             pairs.append((name: key, value: value))
         }
         if !invalidKeys.isEmpty {
             let list = invalidKeys.sorted().joined(separator: ", ")
-            return .failure(BulkParseError(message: String(localized: "以下名称非法（须字母 / 数字 / 下划线，且不以数字开头）：\(list)")))
+            return .failure(BulkParseError(message: AppLocalization.string(localized: "以下名称非法（须字母 / 数字 / 下划线，且不以数字开头）：\(list)")))
         }
         return .success(pairs.sorted { $0.name < $1.name })
     }

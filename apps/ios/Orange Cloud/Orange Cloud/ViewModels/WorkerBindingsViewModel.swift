@@ -7,18 +7,17 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class WorkerBindingsViewModel {
+final class WorkerBindingsViewModel: ObservableObject {
 
-    private(set) var secrets:  [WorkerSecret] = []
-    private(set) var settings: WorkerSettings?
-    private(set) var loaded = false
-    var isLoading = false
-    var isSaving  = false
-    var error: String?
+    @Published private(set) var secrets: [WorkerSecret] = []
+    @Published private(set) var settings: WorkerSettings?
+    @Published private(set) var loaded = false
+    @Published var isLoading = false
+    @Published var isSaving = false
+    @Published var error: String?
 
     private let service: WorkerService
     let accountId:  String
@@ -154,7 +153,7 @@ final class WorkerBindingsViewModel {
             secrets = (try? await service.listSecrets(accountId: accountId, scriptName: scriptName)) ?? secrets
             return true
         } catch {
-            self.error = String(localized: "已导入 \(done)/\(pairs.count) 项后失败：\(error.localizedDescription)")
+            self.error = AppLocalization.string(localized: "已导入 \(done)/\(pairs.count) 项后失败：\(error.localizedDescription)")
             secrets = (try? await service.listSecrets(accountId: accountId, scriptName: scriptName)) ?? secrets
             return false
         }

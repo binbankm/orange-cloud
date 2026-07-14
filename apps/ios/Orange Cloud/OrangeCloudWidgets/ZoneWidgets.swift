@@ -41,6 +41,7 @@ nonisolated private let sampleZone = WidgetZoneMetrics(
     updatedAt: .now
 )
 
+@available(iOSApplicationExtension 17.0, *)
 nonisolated struct ZoneStatProvider: AppIntentTimelineProvider {
 
     func placeholder(in context: Context) -> ZoneWidgetEntry {
@@ -79,6 +80,7 @@ nonisolated private func latestZone(for entity: WidgetZoneEntity?) async -> Widg
     return snapshot
 }
 
+@available(iOSApplicationExtension 17.0, *)
 nonisolated struct ZoneChartProvider: AppIntentTimelineProvider {
 
     func placeholder(in context: Context) -> ZoneWidgetEntry {
@@ -106,31 +108,85 @@ nonisolated struct ZoneChartProvider: AppIntentTimelineProvider {
     }
 }
 
+// AppIntentConfiguration 从 iOS 17 才可用。iOS 16 保留同一套展示和时间线，
+// 以当前快照中的首个域名及请求指标作为默认配置。
+nonisolated private struct ZoneStatFallbackProvider: TimelineProvider {
+    func placeholder(in context: Context) -> ZoneWidgetEntry {
+        ZoneWidgetEntry(date: .now, zone: sampleZone, metric: .requests)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (ZoneWidgetEntry) -> Void) {
+        completion(ZoneWidgetEntry(date: .now, zone: resolveZone(id: nil) ?? sampleZone, metric: .requests))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<ZoneWidgetEntry>) -> Void) {
+        let entry = ZoneWidgetEntry(date: .now, zone: resolveZone(id: nil), metric: .requests)
+        let next = Calendar.current.date(byAdding: .minute, value: 30, to: .now) ?? .now
+        completion(Timeline(entries: [entry], policy: .after(next)))
+    }
+}
+
+nonisolated private struct ZoneChartFallbackProvider: TimelineProvider {
+    func placeholder(in context: Context) -> ZoneWidgetEntry {
+        ZoneWidgetEntry(date: .now, zone: sampleZone, metric: .requests)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (ZoneWidgetEntry) -> Void) {
+        completion(ZoneWidgetEntry(date: .now, zone: resolveZone(id: nil) ?? sampleZone, metric: .requests))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<ZoneWidgetEntry>) -> Void) {
+        let entry = ZoneWidgetEntry(date: .now, zone: resolveZone(id: nil), metric: .requests)
+        let next = Calendar.current.date(byAdding: .minute, value: 30, to: .now) ?? .now
+        completion(Timeline(entries: [entry], policy: .after(next)))
+    }
+}
+
 // MARK: - Widget 定义
 
 struct ZoneStatWidget: Widget {
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: "ZoneStatWidget", intent: ZoneStatConfigIntent.self, provider: ZoneStatProvider()) { entry in
-            ZoneStatWidgetView(entry: entry)
-                .daybreakContainer(date: entry.date)
+        StaticConfiguration(kind: "ZoneStatWidget", provider: ZoneStatFallbackProvider()) { entry in
+            ZoneStatWidgetView(entry: entry).daybreakContainer(date: entry.date)
         }
         .configurationDisplayName("域名指标")
-        .description("单个域名的 24h 指标，可选请求/带宽/威胁/访客")
+        .description("显示当前域名的 24h 请求")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryInline, .accessoryCircular, .accessoryRectangular])
-        .contentMarginsDisabled()
     }
 }
 
 struct ZoneChartWidget: Widget {
     var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "ZoneChartWidget", provider: ZoneChartFallbackProvider()) { entry in
+            ZoneChartWidgetView(entry: entry).daybreakContainer(date: entry.date)
+        }
+        .configurationDisplayName("请求地形")
+        .description("当前域名的 24h 请求地形")
+        .supportedFamilies([.systemMedium, .systemLarge, .accessoryRectangular])
+    }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct ZoneStatConfigurableWidget: Widget {
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(kind: "ZoneStatWidget", intent: ZoneStatConfigIntent.self, provider: ZoneStatProvider()) { entry in
+            ZoneStatWidgetView(entry: entry).daybreakContainer(date: entry.date)
+        }
+        .configurationDisplayName("域名指标")
+        .description("单个域名的 24h 指标，可选请求/带宽/威胁/访客")
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryInline, .accessoryCircular, .accessoryRectangular])
+    }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct ZoneChartConfigurableWidget: Widget {
+    var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "ZoneChartWidget", intent: ZoneChartConfigIntent.self, provider: ZoneChartProvider()) { entry in
-            ZoneChartWidgetView(entry: entry)
-                .daybreakContainer(date: entry.date)
+            ZoneChartWidgetView(entry: entry).daybreakContainer(date: entry.date)
         }
         .configurationDisplayName("请求地形")
         .description("域名 24h 请求地形；大尺寸含命中率与多指标总览")
         .supportedFamilies([.systemMedium, .systemLarge, .accessoryRectangular])
-        .contentMarginsDisabled()
     }
 }
 

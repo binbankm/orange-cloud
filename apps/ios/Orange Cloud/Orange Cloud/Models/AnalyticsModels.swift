@@ -19,17 +19,17 @@ nonisolated enum AnalyticsTimeRange: String, CaseIterable, Identifiable, Sendabl
 
     var label: String {
         switch self {
-        case .last24h: String(localized: "24 小时")
-        case .last7d:  String(localized: "7 天")
-        case .last30d: String(localized: "30 天")
+        case .last24h: AppLocalization.string(localized: "24 小时")
+        case .last7d:  AppLocalization.string(localized: "7 天")
+        case .last30d: AppLocalization.string(localized: "30 天")
         }
     }
 
     var periodLabel: String {
         switch self {
-        case .last24h: String(localized: "过去 24 小时")
-        case .last7d:  String(localized: "过去 7 天")
-        case .last30d: String(localized: "过去 30 天")
+        case .last24h: AppLocalization.string(localized: "过去 24 小时")
+        case .last7d:  AppLocalization.string(localized: "过去 7 天")
+        case .last30d: AppLocalization.string(localized: "过去 30 天")
         }
     }
 

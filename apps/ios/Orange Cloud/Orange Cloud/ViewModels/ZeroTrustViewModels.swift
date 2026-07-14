@@ -6,18 +6,17 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class AccessAppsViewModel {
+final class AccessAppsViewModel: ObservableObject {
 
-    private(set) var apps: [AccessApp] = []
-    private(set) var loaded = false
-    var isLoading = false
-    var isSaving = false
-    var error: String?
-    var didChange = false       // sensoryFeedback 触发器
+    @Published private(set) var apps: [AccessApp] = []
+    @Published private(set) var loaded = false
+    @Published var isLoading = false
+    @Published var isSaving = false
+    @Published var error: String?
+    @Published var didChange = false
 
     private let service: ZeroTrustService
     let accountId: String?
@@ -60,10 +59,10 @@ final class AccessAppsViewModel {
         do {
             let policy = try await service.createAccessPolicy(
                 accountId: accountId,
-                body: AccessPolicyInput(name: String(localized: "\(name) 策略"), decision: decision, include: include)
+                body: AccessPolicyInput(name: AppLocalization.string(localized: "\(name) 策略"), decision: decision, include: include)
             )
             guard let policyId = policy.id else {
-                error = String(localized: "策略创建未返回 ID")
+                error = AppLocalization.string(localized: "策略创建未返回 ID")
                 return false
             }
             do {
@@ -110,7 +109,7 @@ final class AccessAppsViewModel {
             if let patch = policyPatch {
                 try await service.updateAccessPolicy(
                     accountId: accountId, policyId: patch.id,
-                    body: AccessPolicyInput(name: String(localized: "\(name) 策略"), decision: patch.decision, include: patch.include)
+                    body: AccessPolicyInput(name: AppLocalization.string(localized: "\(name) 策略"), decision: patch.decision, include: patch.include)
                 )
             }
             let destinations = hostnames.map { AccessDestinationInput(type: "public", uri: $0) }
@@ -149,16 +148,15 @@ final class AccessAppsViewModel {
     }
 }
 
-@Observable
 @MainActor
-final class GatewayRulesViewModel {
+final class GatewayRulesViewModel: ObservableObject {
 
-    private(set) var rules: [GatewayRule] = []
-    private(set) var loaded = false
-    var isLoading = false
-    var isSaving = false
-    var error: String?
-    var didChange = false       // sensoryFeedback 触发器
+    @Published private(set) var rules: [GatewayRule] = []
+    @Published private(set) var loaded = false
+    @Published var isLoading = false
+    @Published var isSaving = false
+    @Published var error: String?
+    @Published var didChange = false
 
     private let service: ZeroTrustService
     let accountId: String?

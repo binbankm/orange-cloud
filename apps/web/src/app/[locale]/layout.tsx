@@ -124,7 +124,7 @@ export default async function LocaleLayout({
 		"@context": "https://schema.org",
 		"@type": "SoftwareApplication",
 		name: "Orange Cloud",
-		operatingSystem: "iOS 17.0+ / Android 9+",
+		operatingSystem: "iOS 16.0+ / Android 9+",
 		applicationCategory: "DeveloperApplication",
 		description: t("description"),
 		url: SITE_URL,

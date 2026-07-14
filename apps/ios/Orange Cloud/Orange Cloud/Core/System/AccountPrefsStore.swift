@@ -6,11 +6,10 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class AccountPrefsStore {
+final class AccountPrefsStore: ObservableObject {
 
     static let shared = AccountPrefsStore()
 
@@ -20,7 +19,7 @@ final class AccountPrefsStore {
         var r2PlanPaid:      Bool = false
     }
 
-    private(set) var all: [String: Prefs] = [:]
+    @Published private(set) var all: [String: Prefs] = [:]
 
     private static let storeKey = "accountPrefsById"
     private let defaultsTemplate: Prefs

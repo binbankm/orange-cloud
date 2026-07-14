@@ -7,6 +7,8 @@ node_modules/
 # iOS / Xcode
 DerivedData/
 xcuserdata/
+build/
+artifacts/
 
 # Wrangler
 .wrangler/

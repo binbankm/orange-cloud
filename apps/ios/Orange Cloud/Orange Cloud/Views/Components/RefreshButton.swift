@@ -30,7 +30,7 @@ struct RefreshButton: View {
                     .loadingSpinSymbolEffect(isActive: isLoading)
             }
         }
-        .animation(.snappy, value: failed)
+        .animation(.ocSnappy, value: failed)
         .accessibilityLabel(failed && !isLoading ? "刷新失败，点按重试" : "刷新")
     }
 }

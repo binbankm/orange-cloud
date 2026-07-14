@@ -2,7 +2,8 @@
 //  CacheModels.swift
 //  Orange Cloud
 //
-//  SwiftData 本地缓存：View 通过 @Query 读取，ViewModel 刷新 API 后写入，离线可读。
+//  iOS 16 兼容的本地缓存模型。数据由 CacheStore 持久化为 Codable 快照，
+//  ViewModel 刷新 API 后写入，离线仍可读。
 //
 //  唯一性由各 upsert 路径（先按 id/key fetch，再 update-or-insert）在代码层保证——
 //  **不要**用 @Attribute(.unique)：该约束在部分 iOS 17.0 设备上会让 SwiftData 建容器即
@@ -10,10 +11,7 @@
 //
 
 import Foundation
-import SwiftData
-
-@Model
-final class CachedZone {
+nonisolated struct CachedZone: Identifiable, Codable, Hashable, Sendable {
     var id: String
     var name:        String
     var status:      String
@@ -36,7 +34,7 @@ final class CachedZone {
         self.updatedAt   = Date()
     }
 
-    func update(from zone: Zone) {
+    mutating func update(from zone: Zone) {
         name        = zone.name
         status      = zone.status
         planName    = zone.plan?.name ?? "—"
@@ -45,8 +43,7 @@ final class CachedZone {
     }
 }
 
-@Model
-final class CachedWorkerScript {
+nonisolated struct CachedWorkerScript: Identifiable, Codable, Hashable, Sendable {
     // 脚本名只在账号内唯一，全局唯一键用 accountId/scriptId 复合（代码层 upsert 去重）
     var key: String
     var id:         String          // 脚本名
@@ -70,7 +67,7 @@ final class CachedWorkerScript {
         self.updatedAt  = Date()
     }
 
-    func update(from script: WorkerScript) {
+    mutating func update(from script: WorkerScript) {
         createdOn  = script.createdOn
         modifiedOn = script.modifiedOn
         usageModel = script.usageModel
@@ -80,8 +77,7 @@ final class CachedWorkerScript {
     }
 }
 
-@Model
-final class CachedDNSRecord {
+nonisolated struct CachedDNSRecord: Identifiable, Codable, Hashable, Sendable {
     var id: String
     var type:      String
     var name:      String
@@ -106,7 +102,7 @@ final class CachedDNSRecord {
         self.updatedAt = Date()
     }
 
-    func update(from record: DNSRecord) {
+    mutating func update(from record: DNSRecord) {
         type      = record.type
         name      = record.name
         content   = record.content

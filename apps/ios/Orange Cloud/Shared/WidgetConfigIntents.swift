@@ -67,13 +67,20 @@ nonisolated struct WidgetAccountEntityQuery: EntityQuery {
 }
 
 // MARK: - 账号总览 Widget：配置 Intent（固定某个账号）
+//
+// WidgetConfigurationIntent 是 iOS 17+ 协议，部署目标 16.0 下需
+// 用 @available 隔离。iOS 16 的 Widget 使用同 kind 的 StaticConfiguration
+// 走 fallback Provider，不依赖这些 Intent。
 
-nonisolated struct AccountOverviewConfigIntent: WidgetConfigurationIntent {
+@available(iOS 17.0, *)
+struct AccountOverviewConfigIntent: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "选择账号"
     static let description = IntentDescription("展示某个账号的 24 小时请求与域名状态")
 
     @Parameter(title: "账号")
     var account: WidgetAccountEntity?
+
+    func perform() async throws -> some IntentResult { .result() }
 }
 
 // MARK: - 用量 Widget：服务选项
@@ -113,7 +120,8 @@ nonisolated struct UsageServiceEntityQuery: EntityQuery {
     }
 }
 
-nonisolated struct UsageConfigIntent: WidgetConfigurationIntent {
+@available(iOS 17.0, *)
+struct UsageConfigIntent: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "选择服务"
     static let description = IntentDescription("展示某个服务的额度使用情况")
 
@@ -125,6 +133,8 @@ nonisolated struct UsageConfigIntent: WidgetConfigurationIntent {
 
     /// 所选服务 id（未配置时回退 Workers）
     var serviceId: String { service?.id ?? "workers" }
+
+    func perform() async throws -> some IntentResult { .result() }
 }
 
 // MARK: - 域名 Widget：可选择的域名实体（来自快照）
@@ -274,7 +284,8 @@ nonisolated struct ZoneMetricEntityQuery: EntityQuery {
 
 // MARK: - 域名 Widget：配置 Intent
 
-nonisolated struct ZoneStatConfigIntent: WidgetConfigurationIntent {
+@available(iOS 17.0, *)
+struct ZoneStatConfigIntent: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "选择域名与指标"
     static let description = IntentDescription("展示某个域名的单项 24h 指标")
 
@@ -288,12 +299,17 @@ nonisolated struct ZoneStatConfigIntent: WidgetConfigurationIntent {
     var resolvedMetric: ZoneWidgetMetric {
         metric.flatMap { ZoneWidgetMetric(rawValue: $0.id) } ?? .requests
     }
+
+    func perform() async throws -> some IntentResult { .result() }
 }
 
-nonisolated struct ZoneChartConfigIntent: WidgetConfigurationIntent {
+@available(iOS 17.0, *)
+struct ZoneChartConfigIntent: WidgetConfigurationIntent {
     static let title: LocalizedStringResource = "选择域名"
     static let description = IntentDescription("展示某个域名的请求地形与总览")
 
     @Parameter(title: "域名")
     var zone: WidgetZoneEntity?
+
+    func perform() async throws -> some IntentResult { .result() }
 }

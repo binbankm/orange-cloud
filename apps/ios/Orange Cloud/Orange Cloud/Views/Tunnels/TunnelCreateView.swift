@@ -9,7 +9,7 @@ import SwiftUI
 
 struct TunnelCreateView: View {
 
-    let viewModel: TunnelListViewModel
+    @ObservedObject var viewModel: TunnelListViewModel
     let accountId: String
     let session: SessionStore
 
@@ -42,7 +42,7 @@ struct TunnelCreateView: View {
                     }
                 }
             }
-            .navigationTitle("新建隧道")
+            .ocNavigationTitle("新建隧道")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -66,9 +66,16 @@ struct TunnelCreateView: View {
                     .disabled(!canSave)
                 }
             }
-            .navigationDestination(item: $created) { tunnel in
-                TunnelConnectView(tunnel: tunnel, accountId: accountId, session: session) {
-                    dismiss()
+            .navigationDestination(
+                isPresented: Binding(
+                    get: { created != nil },
+                    set: { if !$0 { created = nil } }
+                )
+            ) {
+                if let tunnel = created {
+                    TunnelConnectView(tunnel: tunnel, accountId: accountId, session: session) {
+                        dismiss()
+                    }
                 }
             }
             .interactiveDismissDisabled(viewModel.isSaving)

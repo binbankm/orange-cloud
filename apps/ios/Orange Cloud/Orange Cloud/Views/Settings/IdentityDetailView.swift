@@ -9,10 +9,11 @@
 import SwiftUI
 
 struct IdentityDetailView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let identity: AuthSessionMeta
 
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     @State private var showSignOutConfirm = false
@@ -28,7 +29,7 @@ struct IdentityDetailView: View {
             let readGranted = feature.readScopes.contains { identity.scopes.contains($0) }
             let editGranted = feature.editScopes.contains { identity.scopes.contains($0) }
             guard readGranted || editGranted else { return nil }
-            return (feature.title, editGranted ? String(localized: "读写") : String(localized: "只读"))
+            return (feature.title, editGranted ? AppLocalization.string(localized: "读写") : AppLocalization.string(localized: "只读"))
         }
     }
 
@@ -52,6 +53,8 @@ struct IdentityDetailView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         List {
             // ── 身份信息 ──
             Section {
@@ -62,7 +65,7 @@ struct IdentityDetailView: View {
                         .frame(width: 64, height: 64)
                         .background(
                             LinearGradient(
-                                colors: [Color(red: 1, green: 0.65, blue: 0.31), .ocOrangePressed],
+                                colors: [Color.ocOrange.mixed(with: .white, by: 0.35), .ocOrangePressed],
                                 startPoint: .topLeading, endPoint: .bottomTrailing
                             ),
                             in: Circle()
@@ -138,7 +141,7 @@ struct IdentityDetailView: View {
                     ReauthorizeButton(
                         sessionId: identity.id,
                         scopes: upgradeScopes,
-                        title: String(localized: "一键补齐以上权限")
+                        title: AppLocalization.string(localized: "一键补齐以上权限")
                     )
                     .foregroundStyle(Color.ocOrangeText)
                 } header: {
@@ -178,8 +181,8 @@ struct IdentityDetailView: View {
             }
         } message: {
             Text(auth.sessions.count <= 1
-                 ? String(localized: "这是最后一个账号，退出后将返回登录页。")
-                 : String(localized: "此账号的 Token 将被撤销并从 App 移除。"))
+                 ? AppLocalization.string(localized: "这是最后一个账号，退出后将返回登录页。")
+                 : AppLocalization.string(localized: "此账号的 Token 将被撤销并从 App 移除。"))
         }
     }
 

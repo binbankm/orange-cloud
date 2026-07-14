@@ -10,13 +10,14 @@
 import SwiftUI
 
 struct WorkerRoutesView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: WorkerRoutesViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: WorkerRoutesViewModel
     @State private var sheet: RouteSheet?
 
     init(accountId: String, scriptName: String, session: SessionStore) {
-        _viewModel = State(initialValue: WorkerRoutesViewModel(
+        _viewModel = StateObject(wrappedValue: WorkerRoutesViewModel(
             service: session.workerService, zoneService: session.zoneService,
             accountId: accountId, scriptName: scriptName
         ))
@@ -28,6 +29,8 @@ struct WorkerRoutesView: View {
     private var canWriteRoute:  Bool { auth.hasScope("workers-routes.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if !viewModel.loaded && viewModel.isLoading {
                 SkeletonList(rows: 5, icon: .none, trailing: true)
@@ -42,7 +45,7 @@ struct WorkerRoutesView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("域名")
+        .ocNavigationTitle("域名")
         .navigationBarTitleDisplayMode(.inline)
         .task { if !viewModel.loaded { await viewModel.load() } }
         .sheet(item: $sheet) { kind in
@@ -182,9 +185,10 @@ private enum RouteSheet: String, Identifiable {
 }
 
 private struct RouteEditorSheet: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let kind: RouteSheet
-    let viewModel: WorkerRoutesViewModel
+    @ObservedObject var viewModel: WorkerRoutesViewModel
 
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
@@ -197,6 +201,8 @@ private struct RouteEditorSheet: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section("域名") {
@@ -215,18 +221,18 @@ private struct RouteEditorSheet: View {
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
                 } header: {
-                    Text(isDomain ? String(localized: "主机名") : String(localized: "路由模式"))
+                    Text(isDomain ? AppLocalization.string(localized: "主机名") : AppLocalization.string(localized: "路由模式"))
                 } footer: {
                     Text(isDomain
-                         ? String(localized: "完整主机名，须属于所选域名。")
-                         : String(localized: "URL 模式，可用 * 通配，如 example.com/*。"))
+                         ? AppLocalization.string(localized: "完整主机名，须属于所选域名。")
+                         : AppLocalization.string(localized: "URL 模式，可用 * 通配，如 example.com/*。"))
                 }
 
                 if let error = viewModel.error {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle(isDomain ? String(localized: "挂载自定义域") : String(localized: "添加路由"))
+            .navigationTitle(isDomain ? AppLocalization.string(localized: "挂载自定义域") : AppLocalization.string(localized: "添加路由"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

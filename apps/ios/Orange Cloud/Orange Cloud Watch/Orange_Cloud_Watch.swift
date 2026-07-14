@@ -56,11 +56,10 @@ struct AccountComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "AccountComplication", provider: WatchComplicationProvider()) { entry in
             ComplicationView(entry: entry)
-                .containerBackground(.clear, for: .widget)
         }
         .configurationDisplayName("账号总览")
         .description("全账号 24 小时请求合计")
-        .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline, .accessoryCorner])
+        .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
 
@@ -92,12 +91,6 @@ struct ComplicationView: View {
                 }
                 .padding(2)
             }
-
-        case .accessoryCorner:
-            Text(compact)
-                .font(.system(.title3, design: .rounded).weight(.semibold))
-                .minimumScaleFactor(0.5)
-                .widgetLabel("请求 · 24h")
 
         case .accessoryRectangular:
             HStack(spacing: 6) {

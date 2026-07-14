@@ -7,14 +7,14 @@
 //   → 由 Swift 确定性渲染成 `CreateDNSRecord`，再填入表单，提交前由人核对。
 //  模型只挑字段、不拼协议串，从根上杜绝非法记录类型与字段越界。
 //
-//  全部离线、免费、不出设备。基线 iOS 17：FoundationModels 调用走 #available(iOS 26) 守卫，
+//  全部离线、免费、不出设备。基线 iOS 16：FoundationModels 调用走 #available(iOS 26) 守卫，
 //  老设备保留手填表单。
 //
 
 import Foundation
 import FoundationModels
 
-// MARK: - 对外纯数据类型（不依赖 FoundationModels，iOS 17 也可引用）
+// MARK: - 对外纯数据类型（不依赖 FoundationModels，iOS 16 也可引用）
 
 /// 渲染完成的记录草稿：record 已可直接提交，summary 是给用户核对的自然语言回读。
 nonisolated struct GeneratedDNSRecord: Sendable {

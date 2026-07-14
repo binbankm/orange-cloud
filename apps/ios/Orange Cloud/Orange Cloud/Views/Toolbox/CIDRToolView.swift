@@ -8,12 +8,15 @@
 import SwiftUI
 
 struct CIDRToolView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     @State private var input = ""
     @State private var result: CIDRResult?
     @State private var invalid = false
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         ScrollView {
             VStack(spacing: OCLayout.islandGap) {
                 VStack(spacing: 12) {
@@ -35,7 +38,7 @@ struct CIDRToolView: View {
                     ToolNotice(
                         systemImage: "exclamationmark.triangle",
                         title: "无法解析",
-                        message: String(localized: "请输入形如 10.0.0.0/8 或 2001:db8::/48 的 CIDR。"),
+                        message: AppLocalization.string(localized: "请输入形如 10.0.0.0/8 或 2001:db8::/48 的 CIDR。"),
                         tint: .orange
                     )
                 } else if let result {
@@ -45,7 +48,7 @@ struct CIDRToolView: View {
             .padding(OCLayout.pagePadding)
         }
         .background { SkyBackground() }
-        .navigationTitle("CIDR 计算器")
+        .ocNavigationTitle("CIDR 计算器")
         .navigationBarTitleDisplayMode(.inline)
     }
 

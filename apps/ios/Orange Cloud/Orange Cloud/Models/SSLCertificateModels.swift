@@ -23,9 +23,9 @@ nonisolated struct SSLCertificatePack: Codable, Identifiable, Sendable {
 
     var typeLabel: String {
         switch type {
-        case "universal":                          String(localized: "通用 SSL")
-        case "advanced":                           String(localized: "高级证书")
-        case "sni_custom", "legacy_custom", "mh_custom", "keyless": String(localized: "自定义证书")
+        case "universal":                          AppLocalization.string(localized: "通用 SSL")
+        case "advanced":                           AppLocalization.string(localized: "高级证书")
+        case "sni_custom", "legacy_custom", "mh_custom", "keyless": AppLocalization.string(localized: "自定义证书")
         case "total_tls":                          "Total TLS"
         default:                                   type ?? "—"
         }
@@ -33,10 +33,10 @@ nonisolated struct SSLCertificatePack: Codable, Identifiable, Sendable {
 
     var statusLabel: String {
         switch status {
-        case "active":              String(localized: "已签发")
-        case "pending_validation":  String(localized: "待验证")
-        case "initializing":        String(localized: "初始化中")
-        case "expired":             String(localized: "已过期")
+        case "active":              AppLocalization.string(localized: "已签发")
+        case "pending_validation":  AppLocalization.string(localized: "待验证")
+        case "initializing":        AppLocalization.string(localized: "初始化中")
+        case "expired":             AppLocalization.string(localized: "已过期")
         default:                    status ?? "—"
         }
     }

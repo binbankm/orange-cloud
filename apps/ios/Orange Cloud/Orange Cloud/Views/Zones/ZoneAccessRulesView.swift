@@ -8,16 +8,17 @@
 import SwiftUI
 
 struct ZoneAccessRulesView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: ZoneAccessRulesViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: ZoneAccessRulesViewModel
     @State private var showDenied = false
     @State private var editorTarget: EditorTarget?
     @State private var pendingDelete: FirewallAccessRule?
     @State private var searchText = ""
 
     init(zoneId: String, session: SessionStore) {
-        _viewModel = State(initialValue: ZoneAccessRulesViewModel(
+        _viewModel = StateObject(wrappedValue: ZoneAccessRulesViewModel(
             service: session.firewallAccessRuleService, zoneId: zoneId
         ))
     }
@@ -34,21 +35,23 @@ struct ZoneAccessRulesView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.isLoading && !viewModel.loaded {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .padding(.top, 60)
             } else if viewModel.loaded && viewModel.rules.isEmpty && !canWrite {
-                ContentUnavailableView("暂无访问规则", systemImage: "hand.raised",
+                OCContentUnavailableView("暂无访问规则", systemImage: "hand.raised",
                     description: Text("此域名暂时没有 IP 访问规则。"))
             } else {
                 List {
                     Section {
                         if filteredRules.isEmpty {
                             Text(searchText.isEmpty
-                                 ? String(localized: "暂无规则")
-                                 : String(localized: "无匹配规则"))
+                                 ? AppLocalization.string(localized: "暂无规则")
+                                 : AppLocalization.string(localized: "无匹配规则"))
                                 .font(.footnote).foregroundStyle(.secondary)
                         } else {
                             ForEach(filteredRules) { rule in
@@ -64,8 +67,8 @@ struct ZoneAccessRulesView: View {
                         }
                     } footer: {
                         Text(canWrite
-                             ? String(localized: "左滑删除，点按可改动作与备注；匹配对象不可改。")
-                             : String(localized: "当前授权仅限读取（firewall-services.read）。"))
+                             ? AppLocalization.string(localized: "左滑删除，点按可改动作与备注；匹配对象不可改。")
+                             : AppLocalization.string(localized: "当前授权仅限读取（firewall-services.read）。"))
                     }
                     .glassRow()
                 }
@@ -74,7 +77,7 @@ struct ZoneAccessRulesView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("IP 访问规则")
+        .ocNavigationTitle("IP 访问规则")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "搜索 IP / 备注")
         .toolbar {

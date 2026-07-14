@@ -13,6 +13,7 @@
 //
 
 import Foundation
+import Combine
 import os
 import Sentry
 
@@ -76,9 +77,8 @@ nonisolated enum TelemetryReporter {
 
 // MARK: - 同意状态（MainActor，驱动弹窗与设置开关）
 
-@Observable
 @MainActor
-final class TelemetryStore {
+final class TelemetryStore: ObservableObject {
 
     static let shared = TelemetryStore()
 
@@ -88,7 +88,7 @@ final class TelemetryStore {
 
     private static let consentKey = "telemetryConsent"
 
-    private(set) var consent: Consent
+    @Published private(set) var consent: Consent
 
     /// 设置页 Toggle 绑定
     var isOptedIn: Bool {

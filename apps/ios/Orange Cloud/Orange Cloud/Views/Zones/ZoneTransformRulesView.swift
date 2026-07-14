@@ -9,15 +9,16 @@
 import SwiftUI
 
 struct ZoneTransformRulesView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: ZoneTransformRulesViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: ZoneTransformRulesViewModel
     @State private var showDenied = false
     @State private var editorTarget: EditorTarget?
     @State private var pendingDelete: PendingDelete?
 
     init(zoneId: String, session: SessionStore) {
-        _viewModel = State(initialValue: ZoneTransformRulesViewModel(
+        _viewModel = StateObject(wrappedValue: ZoneTransformRulesViewModel(
             service: session.transformRuleService, zoneId: zoneId
         ))
     }
@@ -25,13 +26,15 @@ struct ZoneTransformRulesView: View {
     private var canWrite: Bool { auth.hasScope("zone-transform-rules.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.isLoading && !viewModel.loaded {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .padding(.top, 60)
             } else if viewModel.loaded && !viewModel.hasAnyRule && !canWrite {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("暂无 Transform Rules", systemImage: "arrow.triangle.branch")
                 } description: {
                     Text("此域名暂时没有 URL 重写或请求/响应头规则。")
@@ -57,7 +60,7 @@ struct ZoneTransformRulesView: View {
             titleVisibility: .visible
         ) {
             if let pd = pendingDelete {
-                Button("删除「\(pd.rule.description ?? String(localized: "未命名规则"))」", role: .destructive) {
+                Button("删除「\(pd.rule.description ?? AppLocalization.string(localized: "未命名规则"))」", role: .destructive) {
                     Task { await viewModel.delete(phase: pd.phase, rule: pd.rule) }
                 }
             }
@@ -95,7 +98,7 @@ struct ZoneTransformRulesView: View {
                                 Button {
                                     Task { await viewModel.toggle(phase: phase, rule: rule, enabled: !(rule.enabled ?? true)) }
                                 } label: {
-                                    Label(rule.enabled == false ? String(localized: "启用") : String(localized: "停用"),
+                                    Label(rule.enabled == false ? AppLocalization.string(localized: "启用") : AppLocalization.string(localized: "停用"),
                                           systemImage: rule.enabled == false ? "play" : "pause")
                                 }
                                 .tint(.orange)
@@ -133,7 +136,7 @@ struct ZoneTransformRulesView: View {
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(rule.description ?? String(localized: "未命名规则"))
+                    Text(rule.description ?? AppLocalization.string(localized: "未命名规则"))
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)

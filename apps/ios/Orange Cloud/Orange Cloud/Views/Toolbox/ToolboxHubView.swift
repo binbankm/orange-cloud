@@ -61,7 +61,7 @@ struct ToolboxHubView: View {
                 .glassRow()
             }
             .daybreakList()
-            .navigationTitle("开发者工具箱")
+            .ocNavigationTitle("开发者工具箱")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

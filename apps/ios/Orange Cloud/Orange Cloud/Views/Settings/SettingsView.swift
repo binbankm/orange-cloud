@@ -8,12 +8,14 @@
 
 import SwiftUI
 import StoreKit
+import WidgetKit
 
 struct SettingsView: View {
-
-    @Environment(AuthManager.self) private var auth
-    @Environment(SessionStore.self) private var session
-    @Environment(EntitlementStore.self) private var entitlements
+    @EnvironmentObject private var auth: AuthManager
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var entitlements: EntitlementStore
+    @EnvironmentObject private var preferences: AppPreferencesStore
+    @ObservedObject private var telemetry = TelemetryStore.shared
 
     @State private var showAddAccount = false
     @State private var showProPaywall = false
@@ -26,11 +28,11 @@ struct SettingsView: View {
     @AppStorage(DayBoundary.storageKey, store: UserDefaults(suiteName: WidgetSnapshot.appGroupID))
     private var dayBoundaryRaw = DayBoundary.utc.rawValue
 
-    @AppStorage(AppAppearance.storageKey) private var appearanceRaw = AppAppearance.system.rawValue
-    @AppStorage(AppLanguage.storageKey)   private var languageRaw   = AppLanguage.system.rawValue
     @AppStorage(AppMotion.storageKey)     private var reduceAnimations = false
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             List {
                 // ── Cloudflare 账号（登录身份）──
@@ -121,18 +123,19 @@ struct SettingsView: View {
 
                 // ── 外观与语言 ──
                 Section {
-                    Picker(selection: $appearanceRaw) {
-                        ForEach(AppAppearance.allCases) { mode in
-                            Text(mode.label).tag(mode.rawValue)
-                        }
+                    NavigationLink {
+                        AppearanceThemeView()
                     } label: {
                         HStack(spacing: 12) {
                             TintIcon(systemImage: "circle.lefthalf.filled", color: .indigo)
-                            Text("外观")
+                        Text(AppLocalization.string(localized: "外观"))
+                            Spacer()
+                            Text(preferences.appearance.label)
+                                .foregroundStyle(.secondary)
                         }
                     }
 
-                    Picker(selection: $languageRaw) {
+                    Picker(selection: languageBinding) {
                         ForEach(AppLanguage.allCases) { language in
                             Text(language.label).tag(language.rawValue)
                         }
@@ -152,10 +155,7 @@ struct SettingsView: View {
                 } header: {
                     Text("外观与语言")
                 } footer: {
-                    Text("语言默认跟随系统，更改后需重新打开 App 生效。开启「减少动画」后，页面切换与界面变化将省去过渡动画，操作更跟手。")
-                }
-                .onChange(of: languageRaw) {
-                    (AppLanguage(rawValue: languageRaw) ?? .system).apply()
+                    Text("语言默认跟随系统，选择后立即生效。开启「减少动画」后，页面切换与界面变化将省去过渡动画，操作更跟手。")
                 }
                 .glassRow()
 
@@ -290,7 +290,7 @@ struct SettingsView: View {
 
                 // ── 体验者计划（opt-in 遥测）──
                 Section {
-                    Toggle(isOn: Bindable(TelemetryStore.shared).isOptedIn) {
+                    Toggle(isOn: $telemetry.isOptedIn) {
                         HStack(spacing: 12) {
                             TintIcon(systemImage: "waveform.path.ecg", color: .teal)
                             Text("体验者计划")
@@ -317,7 +317,7 @@ struct SettingsView: View {
                 .glassRow()
             }
             .daybreakList()
-            .navigationTitle("设置")
+            .ocNavigationTitle("设置")
             .task {
                 await session.ensureAccounts()
             }
@@ -344,12 +344,26 @@ struct SettingsView: View {
         }
     }
 
+    private var appearanceBinding: Binding<String> {
+        Binding(
+            get: { preferences.appearanceRaw },
+            set: { preferences.selectAppearance($0) }
+        )
+    }
+
+    private var languageBinding: Binding<String> {
+        Binding(
+            get: { preferences.languageRaw },
+            set: { preferences.selectLanguage($0) }
+        )
+    }
+
     /// 导出诊断日志：写到临时文件并拉起系统分享
     private func exportLogs() {
         if let url = LogFileStore.shared.exportedFileURL() {
             logShareItems = [url]
         } else {
-            logShareItems = [String(localized: "（暂无诊断日志）")]
+            logShareItems = [AppLocalization.string(localized: "（暂无诊断日志）")]
         }
     }
 
@@ -368,7 +382,7 @@ struct SettingsView: View {
                 .accessibilityHidden(true)
                 .background(
                     LinearGradient(
-                        colors: [Color(red: 1, green: 0.65, blue: 0.31), .ocOrangePressed],
+                        colors: [Color.ocOrange.mixed(with: .white, by: 0.35), .ocOrangePressed],
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     ),
                     in: Circle()
@@ -398,14 +412,100 @@ struct SettingsView: View {
     }
 }
 
+/// 外观与主题集中页，布局与系统设置一致。
+private struct AppearanceThemeView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
+
+    var body: some View {
+        let _ = preferences.themeRaw
+        List {
+            Section {
+                Picker(selection: appearanceBinding) {
+                    ForEach(AppAppearance.allCases) { mode in
+                        Text(mode.label).tag(mode.rawValue)
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        TintIcon(systemImage: "circle.lefthalf.filled", color: .indigo)
+                        Text(AppLocalization.string(localized: "外观"))
+                    }
+                }
+            }
+            .glassRow()
+
+            Section {
+                ThemePaletteRow()
+            } header: {
+                Text(AppLocalization.string(localized: "主题色"))
+            }
+            .glassRow()
+        }
+        .daybreakList()
+        .navigationTitle(Text(AppLocalization.string(localized: "外观")))
+        .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: preferences.themeRaw) { _ in WidgetCenter.shared.reloadAllTimelines() }
+    }
+
+    private var appearanceBinding: Binding<String> {
+        Binding(get: { preferences.appearanceRaw }, set: { preferences.selectAppearance($0) })
+    }
+}
+
+/// 内联主题调色盘，形式与 macOS 设置中的色块选择一致。
+private struct ThemePaletteRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
+
+    var body: some View {
+        let _ = preferences.themeRaw
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                TintIcon(systemImage: "paintpalette.fill", color: .ocOrange)
+                Text(AppLocalization.string(localized: "主题色"))
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                ForEach(AppTheme.allCases) { theme in
+                    Button {
+                        preferences.selectTheme(theme.rawValue)
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(theme.primary)
+                                .frame(width: 40, height: 40)
+                            if preferences.theme == theme {
+                                Circle()
+                                    .strokeBorder(.white, lineWidth: 3)
+                                    .frame(width: 46, height: 46)
+                                Image(systemName: "checkmark")
+                                    .font(.caption.weight(.bold)).foregroundStyle(.white)
+                            }
+                        }
+                        // 固定选中态尺寸，避免外扩描边盖住相邻色块。
+                        .frame(width: 54, height: 54)
+                        .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(theme.rawValue)
+                    .accessibilityValue(preferences.theme == theme ? AppLocalization.string(localized: "当前") : "")
+                }
+            }
+        }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
 // MARK: - 添加账号（新 OAuth 登录，不影响现有身份）
 
 private struct AddAccountSheet: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             PermissionSelectionView(freshLogin: true)
                 .toolbar {
@@ -415,7 +515,7 @@ private struct AddAccountSheet: View {
                 }
         }
         // 登录成功 → currentSessionId 切到新身份 → 关闭弹层
-        .onChange(of: auth.currentSessionId) {
+        .onChange(of: auth.currentSessionId) { _ in
             dismiss()
         }
         .interactiveDismissDisabled(auth.isLoading)
@@ -425,6 +525,7 @@ private struct AddAccountSheet: View {
 // MARK: - 通知（主开关授权后再展开子开关）
 
 private struct NotificationSettingsSection: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     @AppStorage(AppNotifications.masterKey) private var notificationsEnabled = false
     @AppStorage("notifyZoneStatus")   private var notifyZoneStatus = true
@@ -434,6 +535,8 @@ private struct NotificationSettingsSection: View {
     @State private var isRequesting = false
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Section {
             Toggle(isOn: $notificationsEnabled) {
                 HStack(spacing: 12) {
@@ -479,10 +582,10 @@ private struct NotificationSettingsSection: View {
             Text("通知")
         } footer: {
             Text(notificationsEnabled && !systemDenied
-                 ? String(localized: "通过系统后台刷新检测变化后发送本地通知。时机由 iOS 调度，可能有数分钟至数小时延迟。")
-                 : String(localized: "开启后在 Zone 状态变化或 Workers 出错时收到提醒。"))
+                 ? AppLocalization.string(localized: "通过系统后台刷新检测变化后发送本地通知。时机由 iOS 调度，可能有数分钟至数小时延迟。")
+                 : AppLocalization.string(localized: "开启后在 Zone 状态变化或 Workers 出错时收到提醒。"))
         }
-        .onChange(of: notificationsEnabled) {
+        .onChange(of: notificationsEnabled) { _ in
             guard notificationsEnabled else { return }
             Task {
                 isRequesting = true

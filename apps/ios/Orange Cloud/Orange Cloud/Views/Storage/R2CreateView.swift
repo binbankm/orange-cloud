@@ -10,7 +10,7 @@ import SwiftUI
 
 struct R2CreateView: View {
 
-    let viewModel: R2BucketListViewModel
+    @ObservedObject var viewModel: R2BucketListViewModel
     let accountId: String
 
     @Environment(\.dismiss) private var dismiss
@@ -72,7 +72,7 @@ struct R2CreateView: View {
                     }
                 }
             }
-            .navigationTitle("创建存储桶")
+            .ocNavigationTitle("创建存储桶")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

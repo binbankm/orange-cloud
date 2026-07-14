@@ -12,12 +12,13 @@ import UniformTypeIdentifiers
 import QuickLook
 
 struct R2ObjectListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let bucket: R2Bucket
 
-    @Environment(SessionStore.self) private var session
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: R2ObjectListViewModel
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: R2ObjectListViewModel
     @State private var selectedObject: R2Object?
     @State private var objectToDelete: R2Object?
     @State private var showDenied = false
@@ -31,7 +32,7 @@ struct R2ObjectListView: View {
 
     init(bucket: R2Bucket, session: SessionStore) {
         self.bucket = bucket
-        _viewModel = State(initialValue: R2ObjectListViewModel(
+        _viewModel = StateObject(wrappedValue: R2ObjectListViewModel(
             service: session.r2Service,
             accountId: session.selectedAccount?.id ?? "",
             bucketName: bucket.name
@@ -41,14 +42,16 @@ struct R2ObjectListView: View {
     private var canWrite: Bool { auth.hasScope("workers-r2.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.isContentEmpty && viewModel.isLoading {
                 SkeletonList(rows: 9, trailing: true)
             } else if viewModel.isContentEmpty && viewModel.currentPrefix.isEmpty {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("空存储桶", systemImage: "archivebox")
                 } description: {
-                    Text(canWrite ? String(localized: "点击右上角上传第一个文件") : String(localized: "这个存储桶里还没有对象"))
+                    Text(canWrite ? AppLocalization.string(localized: "点击右上角上传第一个文件") : AppLocalization.string(localized: "这个存储桶里还没有对象"))
                 }
             } else {
                 objectList
@@ -107,7 +110,7 @@ struct R2ObjectListView: View {
             }
         }
         .task { await viewModel.load() }
-        .onChange(of: photoItem) {
+        .onChange(of: photoItem) { _ in
             guard let item = photoItem else { return }
             photoItem = nil
             guard canWrite else { showDenied = true; return }
@@ -155,8 +158,8 @@ struct R2ObjectListView: View {
         } message: {
             Text(viewModel.error ?? "")
         }
-        .sensoryFeedback(.success, trigger: viewModel.didUpload)
-        .sensoryFeedback(.success, trigger: viewModel.didTransfer)
+        .ocSensoryFeedback(.success, trigger: viewModel.didUpload)
+        .ocSensoryFeedback(.success, trigger: viewModel.didTransfer)
         .sheet(item: $transferTarget) { request in
             R2TransferSheet(object: request.object, mode: request.mode) { destinationKey in
                 Task {
@@ -176,7 +179,7 @@ struct R2ObjectListView: View {
         .overlay {
             if viewModel.isTransferring {
                 TransferProgressOverlay(
-                    label: viewModel.transferLabel ?? String(localized: "处理中…"),
+                    label: viewModel.transferLabel ?? AppLocalization.string(localized: "处理中…"),
                     progress: viewModel.transferProgress
                 )
             }
@@ -299,7 +302,7 @@ struct R2ObjectListView: View {
             Button {
                 Task { await viewModel.openParentFolder() }
             } label: {
-                R2FolderRow(title: "..", subtitle: String(localized: "上级文件夹"), systemImage: "arrow.up")
+                R2FolderRow(title: "..", subtitle: AppLocalization.string(localized: "上级文件夹"), systemImage: "arrow.up")
             }
             .buttonStyle(.plain)
             .glassRow()
@@ -337,11 +340,14 @@ struct R2ObjectListView: View {
 }
 
 private struct R2FolderRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let title: String
     let subtitle: String?
     var systemImage: String = "folder"
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         HStack(spacing: 12) {
             TintIcon(systemImage: systemImage, color: .ocOrange, size: 28)
             VStack(alignment: .leading, spacing: 2) {
@@ -367,6 +373,7 @@ private struct R2FolderRow: View {
 }
 
 private struct R2ObjectRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let object: R2Object
 
     private var icon: String {
@@ -382,6 +389,8 @@ private struct R2ObjectRow: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         HStack(spacing: 12) {
             TintIcon(systemImage: icon, color: .ocOrange, size: 28)
             VStack(alignment: .leading, spacing: 2) {
@@ -409,9 +418,10 @@ private struct R2ObjectRow: View {
 // MARK: - 对象详情（元数据 + QuickLook 预览 + 删除）
 
 private struct R2ObjectDetailView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let object: R2Object
-    let viewModel: R2ObjectListViewModel
+    @ObservedObject var viewModel: R2ObjectListViewModel
     let canWrite: Bool
 
     @Environment(\.dismiss) private var dismiss
@@ -424,6 +434,8 @@ private struct R2ObjectDetailView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             List {
                 Section("对象") {
@@ -487,7 +499,7 @@ private struct R2ObjectDetailView: View {
                     }
                 }
             }
-            .navigationTitle("对象详情")
+            .ocNavigationTitle("对象详情")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -522,6 +534,7 @@ private struct TransferRequest: Identifiable {
 /// 复制 / 移动目标 Key 编辑表单。仅收集目标 Key 后回调，真正的传输由列表持有 Task 执行，
 /// 这样关掉表单后进度仍在列表（前台）或系统 UI（iOS 26 后台）里继续。
 private struct R2TransferSheet: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let object: R2Object
     let mode: TransferRequest.Mode
@@ -537,12 +550,14 @@ private struct R2TransferSheet: View {
         _destinationKey = State(initialValue: mode == .copy ? Self.copyName(of: object.key) : object.key)
     }
 
-    private var title: String { mode == .copy ? String(localized: "复制对象") : String(localized: "移动 / 重命名") }
-    private var actionLabel: String { mode == .copy ? String(localized: "复制") : String(localized: "移动") }
+    private var title: String { mode == .copy ? AppLocalization.string(localized: "复制对象") : AppLocalization.string(localized: "移动 / 重命名") }
+    private var actionLabel: String { mode == .copy ? AppLocalization.string(localized: "复制") : AppLocalization.string(localized: "移动") }
     private var trimmed: String { destinationKey.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var isValid: Bool { !trimmed.isEmpty && trimmed != object.key }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section("源对象") {
@@ -581,7 +596,7 @@ private struct R2TransferSheet: View {
 
     /// 复制默认名：在扩展名前插入「-副本」（无扩展名则末尾追加）
     private static func copyName(of key: String) -> String {
-        let suffix = String(localized: "-副本")
+        let suffix = AppLocalization.string(localized: "-副本")
         let ns = key as NSString
         let ext = ns.pathExtension
         guard !ext.isEmpty else { return key + suffix }
@@ -591,10 +606,13 @@ private struct R2TransferSheet: View {
 
 /// 前台传输进度浮层（iOS 26 后台路径由系统 UI 接管，不会用到此浮层）
 private struct TransferProgressOverlay: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let label: String
     let progress: Double
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         ZStack {
             Color.black.opacity(0.15).ignoresSafeArea()
             VStack(spacing: 12) {

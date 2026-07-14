@@ -7,22 +7,25 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct ZoneDetailView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    let zone: CachedZone
+    @State private var zone: CachedZone
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
-    @Environment(\.modelContext) private var modelContext
-    @Query private var records: [CachedDNSRecord]
+    @EnvironmentObject private var auth: AuthManager
+    @EnvironmentObject private var cacheStore: CacheStore
+
+    // 域名信息（WHOIS）
+    @State private var whoisInfo: WhoisInfo?
+    @State private var isFetchingWhois = false
 
     // 分析区（内嵌第一层级，ViewModel 由本页持有，下拉刷新共用）
-    @State private var analyticsViewModel: ZoneAnalyticsViewModel
+    @StateObject private var analyticsViewModel: ZoneAnalyticsViewModel
 
     // 操作区
-    @State private var actionsViewModel: ZoneActionsViewModel
+    @StateObject private var actionsViewModel: ZoneActionsViewModel
     @State private var showPurgeConfirm = false
     @State private var showPurgeSheet = false
     @State private var showPurgeDone = false
@@ -32,17 +35,18 @@ struct ZoneDetailView: View {
     @State private var pendingAction: PendingZoneAction?
 
     init(zone: CachedZone, session: SessionStore) {
-        self.zone = zone
+        _zone = State(initialValue: zone)
         self.session = session
         let zoneId = zone.id
-        _records = Query(filter: #Predicate<CachedDNSRecord> { $0.zoneId == zoneId })
-        _analyticsViewModel = State(initialValue: ZoneAnalyticsViewModel(
+        _analyticsViewModel = StateObject(wrappedValue: ZoneAnalyticsViewModel(
             analyticsService: session.analyticsService, zoneId: zoneId
         ))
-        _actionsViewModel = State(initialValue: ZoneActionsViewModel(
+        _actionsViewModel = StateObject(wrappedValue: ZoneActionsViewModel(
             service: session.zoneSettingsService, zoneId: zoneId
         ))
     }
+
+    private var records: [CachedDNSRecord] { cacheStore.records(for: zone.id) }
 
     private var canReadSettings: Bool { auth.hasScope("zone-settings.read") }
     private var canEditSettings: Bool { auth.hasScope("zone-settings.write") }
@@ -56,20 +60,22 @@ struct ZoneDetailView: View {
 
     private var statusText: String {
         switch zone.status {
-        case "active":                  String(localized: "已启用")
-        case "pending", "initializing": String(localized: "待激活")
-        default:                        String(localized: "已暂停")
+        case "active":                  AppLocalization.string(localized: "已启用")
+        case "pending", "initializing": AppLocalization.string(localized: "待激活")
+        default:                        AppLocalization.string(localized: "已暂停")
         }
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 heroCard
 
                 // 分析：图表直接内嵌第一层级，置于管理之前
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("分析")
+                    Text(AppLocalization.string(localized: "分析"))
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .textCase(.uppercase)
@@ -77,7 +83,7 @@ struct ZoneDetailView: View {
                     if auth.hasScope("analytics.read") {
                         ZoneAnalyticsSection(viewModel: analyticsViewModel)
                     } else {
-                        Label("需要「流量分析」权限才能展示流量图表", systemImage: "lock")
+                        Label(AppLocalization.string(localized: "需要「流量分析」权限才能展示流量图表"), systemImage: "lock")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .center)
@@ -86,22 +92,59 @@ struct ZoneDetailView: View {
                     }
                 }
 
+                // 域名信息
+                sectionCard(AppLocalization.string(localized: "域名信息")) {
+                    if isFetchingWhois && whoisInfo == nil {
+                        ProgressView()
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 8)
+                    } else if let whois = whoisInfo {
+                        VStack(spacing: 12) {
+                            if let registrar = whois.registrar {
+                                infoRow(title: AppLocalization.string(localized: "注册商"), value: registrar)
+                            }
+                            if let created = whois.created {
+                                infoRow(title: AppLocalization.string(localized: "注册时间"), value: AppLocalization.abbreviatedDate(created))
+                            }
+                            if let expires = whois.expires {
+                                let days = Calendar.current.dateComponents([.day], from: Date(), to: expires).day ?? 0
+                                let dayText = days < 0 ? AppLocalization.string(localized: "已过期 \(-days) 天") : AppLocalization.string(localized: "剩 \(days) 天")
+                                infoRow(title: AppLocalization.string(localized: "到期时间"), value: "\(AppLocalization.abbreviatedDate(expires)) (\(dayText))")
+                            }
+                            if whois.registrar == nil && whois.expires == nil {
+                                Text(AppLocalization.string(localized: "未查询到公开的 WHOIS 信息"))
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            }
+                        }
+                    } else {
+                        Button {
+                            Task { await fetchWhois() }
+                        } label: {
+                            Label(AppLocalization.string(localized: "查询域名信息"), systemImage: "info.circle")
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+
                 // 本卡内 eager 门控行的保留判据：目的页是叶子（内部只开 sheet、不再 push）。
                 // 「规则」「负载均衡」的目的页还要继续 push，已改值式（ZoneRoute + 栈根 navdest）；
                 // 其余若日后加内层 push，必须同步改值式。
-                sectionCard(String(localized: "管理")) {
+                sectionCard(AppLocalization.string(localized: "管理")) {
                     PermissionGatedNavigationLink(
-                        label: String(localized: "DNS 记录"),
+                        label: "DNS 记录",
                         systemImage: "network",
                         requiredScope: "dns.read",
                         showsChevron: true
                     ) {
                         DNSListView(zoneId: zone.id, zoneName: zone.name, session: session)
                     }
-                    .listRowStyleValue(String(localized: "\(dnsRecordDisplayCount) 条"))
+                    .listRowStyleValue(AppLocalization.string(localized: "\(dnsRecordDisplayCount) 条"))
 
                     ProGatedNavigationLink(
-                        label: String(localized: "WAF 防火墙"),
+                        label: "WAF 防火墙",
                         systemImage: "shield",
                         requiredScope: "zone-waf.read",
                         feature: .waf,
@@ -113,7 +156,7 @@ struct ZoneDetailView: View {
 
                     ProGatedNavigationLink(
                         label: "Rate Limiting",
-                        systemImage: "gauge.with.dots.needle.bottom.50percent",
+                        systemImage: "gauge",
                         requiredScope: "zone-waf.read",
                         feature: .rateLimit,
                         tint: .pink,
@@ -125,7 +168,7 @@ struct ZoneDetailView: View {
                     // 规则族（Transform / 缓存 / Snippets / 重定向 / 源站 / 配置 / 压缩 /
                     // 自定义错误 / Page Rules / URL 规范化）统一收进「规则」二级入口
                     PermissionGatedValueLink(
-                        label: String(localized: "规则"),
+                        label: "规则",
                         systemImage: "list.bullet.rectangle",
                         requiredScope: "zone.read",
                         tint: .orange,
@@ -155,7 +198,7 @@ struct ZoneDetailView: View {
                     }
 
                     PermissionGatedNavigationLink(
-                        label: String(localized: "性能与缓存"),
+                        label: "性能与缓存",
                         systemImage: "speedometer",
                         requiredScope: "zone-settings.read",
                         tint: .teal,
@@ -165,7 +208,7 @@ struct ZoneDetailView: View {
                     }
 
                     PermissionGatedNavigationLink(
-                        label: String(localized: "SSL 证书"),
+                        label: "SSL 证书",
                         systemImage: "checkmark.seal",
                         requiredScope: "ssl-and-certificates.read",
                         tint: .green,
@@ -175,7 +218,7 @@ struct ZoneDetailView: View {
                     }
 
                     PermissionGatedNavigationLink(
-                        label: String(localized: "IP 访问规则"),
+                        label: "IP 访问规则",
                         systemImage: "hand.raised",
                         requiredScope: "firewall-services.read",
                         tint: .red,
@@ -185,7 +228,7 @@ struct ZoneDetailView: View {
                     }
 
                     ProGatedValueLink(
-                        label: String(localized: "负载均衡"),
+                        label: "负载均衡",
                         systemImage: "arrow.left.arrow.right",
                         requiredScope: "load-balancers.read",
                         feature: .loadBalancing,
@@ -195,10 +238,10 @@ struct ZoneDetailView: View {
                     )
                 }
 
-                sectionCard(String(localized: "操作")) {
+                sectionCard(AppLocalization.string(localized: "操作")) {
                     settingToggleRow(
-                        title: String(localized: "Under Attack 模式"),
-                        subtitle: String(localized: "对所有访客启用质询页"),
+                        title: AppLocalization.string(localized: "Under Attack 模式"),
+                        subtitle: AppLocalization.string(localized: "对所有访客启用质询页"),
                         icon: "shield.lefthalf.filled",
                         tint: .red,
                         isOn: actionsViewModel.underAttack,
@@ -207,8 +250,8 @@ struct ZoneDetailView: View {
                     )
 
                     settingToggleRow(
-                        title: String(localized: "开发模式"),
-                        subtitle: String(localized: "临时绕过缓存（3 小时后自动关闭）"),
+                        title: AppLocalization.string(localized: "开发模式"),
+                        subtitle: AppLocalization.string(localized: "临时绕过缓存（3 小时后自动关闭）"),
                         icon: "hammer",
                         tint: .blue,
                         isOn: actionsViewModel.devMode,
@@ -226,7 +269,7 @@ struct ZoneDetailView: View {
                     } label: {
                         HStack(spacing: 12) {
                             TintIcon(systemImage: "trash", color: .ocOrange)
-                            Text("清理全部缓存")
+                            Text(AppLocalization.string(localized: "清理全部缓存"))
                                 .foregroundStyle(.primary)
                             Spacer()
                             if actionsViewModel.isPurging {
@@ -250,7 +293,7 @@ struct ZoneDetailView: View {
                     } label: {
                         HStack(spacing: 12) {
                             TintIcon(systemImage: "scissors", color: .ocOrange)
-                            Text("按目标清理缓存")
+                            Text(AppLocalization.string(localized: "按目标清理缓存"))
                                 .foregroundStyle(.primary)
                             Spacer()
                             Image(systemName: canPurge ? "chevron.right" : "lock.fill")
@@ -262,7 +305,7 @@ struct ZoneDetailView: View {
                 }
 
                 if !zone.nameServers.isEmpty {
-                    sectionCard("Name Servers") {
+                    sectionCard(AppLocalization.string(localized: "Name Servers")) {
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(zone.nameServers, id: \.self) { server in
                                 Text(server)
@@ -275,7 +318,7 @@ struct ZoneDetailView: View {
                 }
 
                 // Zone ID footer
-                Text("Zone ID · \(zone.id)")
+                Text(AppLocalization.string(localized: "Zone ID · \(zone.id)"))
                     .font(.caption2.monospaced())
                     .foregroundStyle(.tertiary)
                     .textSelection(.enabled)
@@ -289,22 +332,24 @@ struct ZoneDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button(zone.pinned ? String(localized: "取消固定") : String(localized: "固定到首页"),
+                Button(zone.pinned ? AppLocalization.string(localized: "取消固定") : AppLocalization.string(localized: "固定到首页"),
                        systemImage: zone.pinned ? "pin.fill" : "pin") {
-                    withAnimation(.smooth) {
+                    withAnimation(.ocSmooth) {
                         zone.pinned.toggle()
                     }
-                    SafeCache.perform("pin 状态保存") { try modelContext.save() }
+                    CacheStore.shared.setPinned(zone.pinned, zoneId: zone.id)
                 }
-                .contentTransition(.symbolEffect(.replace))
             }
         }
-        .sensoryFeedback(.impact(weight: .light), trigger: zone.pinned)
-        .sensoryFeedback(.success, trigger: actionsViewModel.didPurge)
+        .ocSensoryFeedback(.impact(weight: .light), trigger: zone.pinned)
+        .ocSensoryFeedback(.success, trigger: actionsViewModel.didPurge)
         .task {
             if canReadSettings {
                 await actionsViewModel.loadSettings()
             }
+        }
+        .task {
+            await fetchWhois()
         }
         .task {
             // 该 zone 尚未统计过记录数（前 50 个之外 / Dashboard 未加载完就进来）：
@@ -312,7 +357,7 @@ struct ZoneDetailView: View {
             if zone.dnsRecordCount == nil, records.isEmpty, auth.hasScope("dns.read"),
                let count = try? await session.dnsService.recordCount(zoneId: zone.id) {
                 zone.dnsRecordCount = count
-                SafeCache.perform("dnsRecordCount 保存") { try modelContext.save() }
+                CacheStore.shared.setDNSRecordCount(count, zoneId: zone.id)
             }
         }
         .refreshable {
@@ -322,6 +367,7 @@ struct ZoneDetailView: View {
             if canReadSettings {
                 await actionsViewModel.loadSettings()
             }
+            await fetchWhois()
         }
         .confirmationDialog(
             pendingAction?.title ?? "",
@@ -343,17 +389,17 @@ struct ZoneDetailView: View {
         } message: { action in
             Text(action.message(zoneName: zone.name))
         }
-        .confirmationDialog("清理全部缓存？", isPresented: $showPurgeConfirm, titleVisibility: .visible) {
-            Button("清理", role: .destructive) {
+        .confirmationDialog(AppLocalization.string(localized: "清理全部缓存？"), isPresented: $showPurgeConfirm, titleVisibility: .visible) {
+            Button(AppLocalization.string(localized: "清理"), role: .destructive) {
                 Task { await actionsViewModel.purgeCache() }
             }
         } message: {
-            Text("将清空 \(zone.name) 在 Cloudflare 边缘的所有缓存，回源流量会短暂上升。")
+            Text(AppLocalization.string(localized: "将清空 \(zone.name) 在 Cloudflare 边缘的所有缓存，回源流量会短暂上升。"))
         }
-        .alert("缓存已清理", isPresented: $showPurgeDone) {
-            Button("好", role: .cancel) {}
+        .alert(AppLocalization.string(localized: "缓存已清理"), isPresented: $showPurgeDone) {
+            Button(AppLocalization.string(localized: "好"), role: .cancel) {}
         } message: {
-            Text("边缘节点将在数秒内完成清理。")
+            Text(AppLocalization.string(localized: "边缘节点将在数秒内完成清理。"))
         }
         .sheet(isPresented: $showPurgeSheet) {
             PurgeCacheSheet(zoneName: zone.name) { mode, items in
@@ -365,21 +411,21 @@ struct ZoneDetailView: View {
                 }
             }
         }
-        .onChange(of: actionsViewModel.didPurge) {
+        .onChange(of: actionsViewModel.didPurge) { _ in
             showPurgeDone = true
         }
-        .alert("权限不足", isPresented: $showActionDenied) {
+        .alert(AppLocalization.string(localized: "权限不足"), isPresented: $showActionDenied) {
             if let sessionId = auth.currentSessionId, !deniedScopeHint.isEmpty {
-                Button("一键重授权") {
+                Button(AppLocalization.string(localized: "一键重授权")) {
                     let scope = deniedScopeHint
                     Task { await auth.reauthorize(sessionId: sessionId, additionalScopes: [scope]) }
                 }
             }
-            Button("好", role: .cancel) {}
+            Button(AppLocalization.string(localized: "好"), role: .cancel) {}
         } message: {
-            Text("当前授权未包含此操作所需权限（\(deniedScopeHint)）。点「一键重授权」补齐，无需退出登录。")
+            Text(AppLocalization.string(localized: "当前授权未包含此操作所需权限（\(deniedScopeHint)）。点「一键重授权」补齐，无需退出登录。"))
         }
-        .alert("操作失败", isPresented: .init(
+        .alert(AppLocalization.string(localized: "操作失败"), isPresented: .init(
             get: { actionsViewModel.error != nil },
             set: { if !$0 { actionsViewModel.error = nil } }
         )) {
@@ -387,6 +433,31 @@ struct ZoneDetailView: View {
         } message: {
             Text(actionsViewModel.error ?? "")
         }
+    }
+
+    // MARK: - 域名信息 Helpers
+
+    private func fetchWhois() async {
+        guard whoisInfo == nil && !isFetchingWhois else { return }
+        isFetchingWhois = true
+        defer { isFetchingWhois = false }
+        do {
+            whoisInfo = try await RDAPService().lookup(domain: zone.name)
+        } catch {
+            // Ignore error gracefully
+        }
+    }
+
+    private func infoRow(title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.trailing)
+        }
+        .font(.subheadline)
     }
 
     // MARK: - 设置开关行
@@ -425,7 +496,7 @@ struct ZoneDetailView: View {
                 } label: {
                     if actionsViewModel.settingsLoaded {
                         // 只读授权：显示当前状态
-                        Text(isOn ? String(localized: "开") : String(localized: "关"))
+                        Text(isOn ? AppLocalization.string(localized: "开") : AppLocalization.string(localized: "关"))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     } else {
@@ -437,8 +508,8 @@ struct ZoneDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(title)
-                .accessibilityValue(actionsViewModel.settingsLoaded ? (isOn ? String(localized: "开") : String(localized: "关")) : "")
-                .accessibilityHint("需要额外授权才能修改")
+                .accessibilityValue(actionsViewModel.settingsLoaded ? (isOn ? AppLocalization.string(localized: "开") : AppLocalization.string(localized: "关")) : "")
+                .accessibilityHint(AppLocalization.string(localized: "需要额外授权才能修改"))
             }
         }
     }
@@ -505,30 +576,30 @@ private nonisolated enum PendingZoneAction: Identifiable {
 
     var title: String {
         switch self {
-        case .underAttack(true):  String(localized: "开启 Under Attack 模式？")
-        case .underAttack(false): String(localized: "关闭 Under Attack 模式？")
-        case .devMode(true):      String(localized: "开启开发模式？")
-        case .devMode(false):     String(localized: "关闭开发模式？")
+        case .underAttack(true):  AppLocalization.string(localized: "开启 Under Attack 模式？")
+        case .underAttack(false): AppLocalization.string(localized: "关闭 Under Attack 模式？")
+        case .devMode(true):      AppLocalization.string(localized: "开启开发模式？")
+        case .devMode(false):     AppLocalization.string(localized: "关闭开发模式？")
         }
     }
 
     var confirmLabel: String {
         switch self {
-        case .underAttack(true), .devMode(true):   String(localized: "确认开启")
-        case .underAttack(false), .devMode(false): String(localized: "确认关闭")
+        case .underAttack(true), .devMode(true):   AppLocalization.string(localized: "确认开启")
+        case .underAttack(false), .devMode(false): AppLocalization.string(localized: "确认关闭")
         }
     }
 
     func message(zoneName: String) -> String {
         switch self {
         case .underAttack(true):
-            String(localized: "开启后，访问 \(zoneName) 的所有访客都会先看到约 5 秒的质询页，可能影响正常用户体验。适合正在遭受攻击时使用。")
+            AppLocalization.string(localized: "开启后，访问 \(zoneName) 的所有访客都会先看到约 5 秒的质询页，可能影响正常用户体验。适合正在遭受攻击时使用。")
         case .underAttack(false):
-            String(localized: "关闭后，\(zoneName) 的安全级别将恢复为「中」。")
+            AppLocalization.string(localized: "关闭后，\(zoneName) 的安全级别将恢复为「中」。")
         case .devMode(true):
-            String(localized: "开启后，\(zoneName) 将临时绕过 Cloudflare 缓存，源站负载会上升；3 小时后自动关闭。")
+            AppLocalization.string(localized: "开启后，\(zoneName) 将临时绕过 Cloudflare 缓存，源站负载会上升；3 小时后自动关闭。")
         case .devMode(false):
-            String(localized: "关闭后，\(zoneName) 立即恢复缓存加速。")
+            AppLocalization.string(localized: "关闭后，\(zoneName) 立即恢复缓存加速。")
         }
     }
 }

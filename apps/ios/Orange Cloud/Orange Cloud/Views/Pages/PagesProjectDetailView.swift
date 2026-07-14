@@ -8,10 +8,11 @@
 import SwiftUI
 
 struct PagesProjectDetailView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: PagesProjectDetailViewModel
-    @State private var deployViewModel: PagesDeployViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: PagesProjectDetailViewModel
+    @StateObject private var deployViewModel: PagesDeployViewModel
     @State private var showDeleteConfirm = false
     @State private var showDeploy = false
     // 子页（域名 / 部署详情 / 构建配置）走 sheet，不走 push：见 infoSection 内注释
@@ -25,12 +26,12 @@ struct PagesProjectDetailView: View {
     init(project: PagesProject, session: SessionStore) {
         self.session = session
         let accountId = session.selectedAccount?.id ?? ""
-        _viewModel = State(initialValue: PagesProjectDetailViewModel(
+        _viewModel = StateObject(wrappedValue: PagesProjectDetailViewModel(
             project: project,
             accountId: accountId,
             service: session.pagesService
         ))
-        _deployViewModel = State(initialValue: PagesDeployViewModel(
+        _deployViewModel = StateObject(wrappedValue: PagesDeployViewModel(
             service: session.pagesService,
             accountId: accountId,
             projectName: project.name
@@ -41,6 +42,8 @@ struct PagesProjectDetailView: View {
     private var canWrite: Bool { auth.hasScope("page.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         List {
             infoSection
             if canWrite { deploySection }
@@ -95,8 +98,8 @@ struct PagesProjectDetailView: View {
                     }
             }
         }
-        .sensoryFeedback(.success, trigger: viewModel.didMutate)
-        .sensoryFeedback(.success, trigger: deployViewModel.phase == .done)
+        .ocSensoryFeedback(.success, trigger: viewModel.didMutate)
+        .ocSensoryFeedback(.success, trigger: deployViewModel.phase == .done)
         .confirmationDialog("删除项目「\(project.name)」？", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("删除项目", role: .destructive) {
                 Task { if await viewModel.deleteProject() { dismiss() } }
@@ -153,7 +156,7 @@ struct PagesProjectDetailView: View {
                 }
             }
             if let date = WorkerScript.parseDate(project.createdOn) {
-                infoRow("创建于", value: date.formatted(.dateTime.year().month().day()))
+                infoRow("创建于", value: AppLocalization.abbreviatedDate(date))
             }
         } header: {
             Text("项目")
@@ -214,7 +217,7 @@ struct PagesProjectDetailView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     PagesStatusBadge(status: dep.status)
-                    Text(dep.isProduction ? String(localized: "生产") : String(localized: "预览"))
+                    Text(dep.isProduction ? AppLocalization.string(localized: "生产") : AppLocalization.string(localized: "预览"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -226,7 +229,7 @@ struct PagesProjectDetailView: View {
             }
             Spacer()
             if let date = WorkerScript.parseDate(dep.createdOn) {
-                Text(date, format: .relative(presentation: .named))
+                Text(AppLocalization.relativeDate(date))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }

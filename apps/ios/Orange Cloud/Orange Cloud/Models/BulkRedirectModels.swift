@@ -185,10 +185,10 @@ nonisolated enum RedirectStatusCode: Int, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .movedPermanently: String(localized: "301 永久")
-        case .found:            String(localized: "302 临时")
-        case .temporary:        String(localized: "307 临时（保留方法）")
-        case .permanent:        String(localized: "308 永久（保留方法）")
+        case .movedPermanently: AppLocalization.string(localized: "301 永久")
+        case .found:            AppLocalization.string(localized: "302 临时")
+        case .temporary:        AppLocalization.string(localized: "307 临时（保留方法）")
+        case .permanent:        AppLocalization.string(localized: "308 永久（保留方法）")
         }
     }
 }

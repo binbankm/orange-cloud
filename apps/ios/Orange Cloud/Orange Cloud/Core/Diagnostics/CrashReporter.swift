@@ -29,6 +29,11 @@ nonisolated enum CrashReporter {
     private static let maxLogCharacters = 12_000
     private static let maxBreadcrumbCharacters = 8_000
 
+    /// 面包屑内存缓冲：O(1) 追加，不阻塞调用方线程。
+    /// 所有读写通过 breadcrumbQueue 串行化（充当轻量锁）。
+    private static var breadcrumbBuffer: [String] = []
+    private static let breadcrumbQueue = DispatchQueue(label: "app.orangecloud.crashreporter.breadcrumb", qos: .utility)
+
     // 仅捕获“真致命”的信号。SIGPIPE 不在内：默认处置是终止进程，但断开的
     // socket 本应是无害的——这里显式忽略（见 install()），避免把它升级成崩溃。
     private static let handledSignals: [Int32] = [
@@ -70,9 +75,20 @@ nonisolated enum CrashReporter {
     }
 
     /// 启动 / 关键路径埋点：崩溃报告会带上最后几条面包屑，定位崩在哪一步。
+    /// 立即写入内存缓冲（非阻塞），磁盘写入在后台队列异步完成。
     static func recordBreadcrumb(_ message: String) {
         let timestamp = ISO8601DateFormatter().string(from: Date())
-        appendBreadcrumb("\(timestamp) \(message)\n")
+        let line = "\(timestamp) \(message)\n"
+        // 内存追加在后台队列串行执行，保证线程安全且不阻塞调用方（主线程启动路径）
+        breadcrumbQueue.async {
+            breadcrumbBuffer.append(line)
+            writeBreadcrumbBufferToDisk()
+        }
+    }
+
+    /// 崩溃前调用：同步等待后台队列完成当前所有面包屑写盘，确保 crash report 拿到最新快照。
+    private static func flushBreadcrumbs() {
+        breadcrumbQueue.sync { }
     }
 
     fileprivate static func record(exception: NSException) {
@@ -111,6 +127,7 @@ nonisolated enum CrashReporter {
     }
 
     private static func writeReport(title: String, details: [String], stack: [String]) {
+        flushBreadcrumbs()   // 确保所有异步面包屑在崩溃报告写盘前落地
         let report = formatReport(title: title, details: details, stack: stack)
         do {
             try createLogDirectory()
@@ -120,12 +137,14 @@ nonisolated enum CrashReporter {
         }
     }
 
-    private static func appendBreadcrumb(_ line: String) {
+    /// 将内存缓冲合并为环形字节限制的文本并写盘。
+    /// 必须在 breadcrumbQueue 内调用（保证串行访问 breadcrumbBuffer）。
+    private static func writeBreadcrumbBufferToDisk() {
+        let combined = breadcrumbBuffer.joined()
+        let truncated = String(combined.suffix(maxBreadcrumbCharacters))
         do {
             try createLogDirectory()
-            let previous = (try? String(contentsOf: breadcrumbURL, encoding: .utf8)) ?? ""
-            let text = String((previous + line).suffix(maxBreadcrumbCharacters))
-            try Data(text.utf8).write(to: breadcrumbURL, options: .atomic)
+            try Data(truncated.utf8).write(to: breadcrumbURL, options: .atomic)
         } catch {
             NSLog("Orange Cloud breadcrumb write failed: %@", error.localizedDescription)
         }

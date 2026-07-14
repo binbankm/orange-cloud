@@ -6,15 +6,13 @@
 //
 
 import Foundation
-import Observation
-import SwiftData
+import Combine
 
-@Observable
 @MainActor
-final class WorkerListViewModel {
+final class WorkerListViewModel: ObservableObject {
 
-    var isLoading = false
-    var error: String?
+    @Published var isLoading = false
+    @Published var error: String?
 
     private let workerService: WorkerService
     /// 进行中的加载任务（见 ZoneListViewModel：独立 Task 承载加载，避免下拉手势取消导致 .cancelled 误报）
@@ -25,7 +23,7 @@ final class WorkerListViewModel {
     }
 
     /// 从 API 刷新并 upsert 进缓存（共享逻辑见 CacheSync，仅限当前账号）
-    func refresh(accountId: String, context: ModelContext) async {
+    func refresh(accountId: String) async {
         // 复用进行中的加载，并把网络加载放进独立 Task：下拉手势 / searchable 取消
         // .refreshable 子任务时不波及加载，避免 URLError.cancelled 误报为加载失败
         if let loadTask {
@@ -34,19 +32,19 @@ final class WorkerListViewModel {
         }
         let task = Task { [weak self] in
             guard let self else { return }
-            await self.load(accountId: accountId, context: context)
+            await self.load(accountId: accountId)
         }
         loadTask = task
         defer { loadTask = nil }
         await task.value
     }
 
-    private func load(accountId: String, context: ModelContext) async {
+    private func load(accountId: String) async {
         isLoading = true
         error = nil
         do {
             let scripts = try await workerService.listScripts(accountId: accountId)
-            CacheSync.syncWorkers(scripts, accountId: accountId, context: context)
+            CacheSync.syncWorkers(scripts, accountId: accountId)
         } catch is CancellationError {
             // 任务取消属正常生命周期，不算加载失败
         } catch let urlError as URLError where urlError.code == .cancelled {

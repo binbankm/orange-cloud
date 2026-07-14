@@ -10,6 +10,7 @@ import SwiftUI
 import StoreKit
 
 struct AboutView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     @Environment(\.requestReview) private var requestReview
 
@@ -20,6 +21,8 @@ struct AboutView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         List {
             // ── App 头部 ──
             Section {
@@ -65,7 +68,7 @@ struct AboutView: View {
             // ── 社区 ──
             Section {
                 aboutLink("GitHub", icon: "chevron.left.forwardslash.chevron.right", url: "https://github.com/chen2he/orange-cloud")
-                aboutLink(String(localized: "Telegram 频道"), icon: "paperplane", url: "https://t.me/orange_cloud_channel")
+                aboutLink(AppLocalization.string(localized: "Telegram 频道"), icon: "paperplane", url: "https://t.me/orange_cloud_channel")
             } header: {
                 Text("社区")
             } footer: {
@@ -75,8 +78,8 @@ struct AboutView: View {
 
             // ── 法律 ──
             Section {
-                aboutLink(String(localized: "隐私政策"), icon: "doc.text", url: "https://o-c.do/privacy")
-                aboutLink(String(localized: "使用条款"), icon: "doc.plaintext", url: "https://o-c.do/terms")
+                aboutLink(AppLocalization.string(localized: "隐私政策"), icon: "doc.text", url: "https://o-c.do/privacy")
+                aboutLink(AppLocalization.string(localized: "使用条款"), icon: "doc.plaintext", url: "https://o-c.do/terms")
             } header: {
                 Text("法律")
             } footer: {
@@ -87,7 +90,7 @@ struct AboutView: View {
             .glassRow()
         }
         .daybreakList()
-        .navigationTitle("关于")
+        .ocNavigationTitle("关于")
         .navigationBarTitleDisplayMode(.inline)
     }
 

@@ -12,10 +12,10 @@ struct PermissionDeniedView: View {
     let featureName:   String
     let requiredScope: String
 
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
 
     var body: some View {
-        ContentUnavailableView {
+        OCContentUnavailableView {
             Label("\(featureName) 未授权", systemImage: "lock.shield")
         } description: {
             Text("当前授权未包含「\(featureName)」的访问权限（\(requiredScope)）。点「一键重授权」补齐，无需退出登录。")
@@ -32,5 +32,5 @@ struct PermissionDeniedView: View {
 
 #Preview {
     PermissionDeniedView(featureName: "Workers", requiredScope: "workers-scripts.read")
-        .environment(AuthManager())
+        .environmentObject(AuthManager())
 }

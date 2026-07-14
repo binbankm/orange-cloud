@@ -8,7 +8,6 @@
 
 import Foundation
 import BackgroundTasks
-import SwiftData
 
 @MainActor
 enum BackgroundRefresh {
@@ -53,8 +52,7 @@ enum BackgroundRefresh {
         let targetId = WidgetSnapshot.currentAccountId()
         let account = accounts.first { $0.id == targetId } ?? accounts[0]
         guard let zones = try? await ZoneService(client: client).listZones(accountId: account.id) else { return }
-        let context = ModelContext(CacheContainer.shared)
-        CacheSync.syncZones(zones, accountId: account.id, accountName: account.name, context: context)
+        CacheSync.syncZones(zones, accountId: account.id, accountName: account.name)
         // Widget 账号目录（选择账号 picker 数据源）后台也保持最新
         if let sessionId = authManager.currentSessionId {
             WidgetDataStore.mergeAccounts(

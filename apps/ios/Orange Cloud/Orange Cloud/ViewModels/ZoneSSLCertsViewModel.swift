@@ -6,20 +6,19 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class ZoneSSLCertsViewModel {
+final class ZoneSSLCertsViewModel: ObservableObject {
 
-    private(set) var packs: [SSLCertificatePack] = []
-    private(set) var universalEnabled = true
-    private(set) var universalLoaded = false
-    private(set) var isLoading = false
-    private(set) var loaded = false
-    var isTogglingUniversal = false
-    var isDeleting = false
-    var error: String?
+    @Published private(set) var packs: [SSLCertificatePack] = []
+    @Published private(set) var universalEnabled = true
+    @Published private(set) var universalLoaded = false
+    @Published private(set) var isLoading = false
+    @Published private(set) var loaded = false
+    @Published var isTogglingUniversal = false
+    @Published var isDeleting = false
+    @Published var error: String?
 
     private let service: SSLCertificateService
     private let zoneId: String

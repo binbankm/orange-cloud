@@ -37,6 +37,7 @@ nonisolated private func aggregateZones(accountId: String?) -> (total: Int, seri
 
 nonisolated private let sampleSeries = [42, 50, 47, 61, 58, 72, 90, 84, 95, 110, 104, 96, 88, 92, 81, 76, 70, 64, 58, 66, 61, 55, 50, 57]
 
+@available(iOSApplicationExtension 17.0, *)
 nonisolated struct ZoneStatusProvider: AppIntentTimelineProvider {
 
     func placeholder(in context: Context) -> AccountOverviewEntry {
@@ -71,17 +72,58 @@ nonisolated struct ZoneStatusProvider: AppIntentTimelineProvider {
     }
 }
 
+nonisolated private struct ZoneStatusFallbackProvider: TimelineProvider {
+    func placeholder(in context: Context) -> AccountOverviewEntry {
+        AccountOverviewEntry(
+            date: .now,
+            snapshot: WidgetSnapshot(accountName: "My Account", totalZones: 5, activeZones: 4, updatedAt: .now),
+            totalRequests: 2_418_650,
+            series: sampleSeries
+        )
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (AccountOverviewEntry) -> Void) {
+        completion(currentEntry())
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<AccountOverviewEntry>) -> Void) {
+        let next = Calendar.current.date(byAdding: .hour, value: 1, to: .now) ?? .now
+        completion(Timeline(entries: [currentEntry()], policy: .after(next)))
+    }
+
+    private func currentEntry() -> AccountOverviewEntry {
+        let accountId = WidgetSnapshot.currentAccountId()
+        let aggregate = aggregateZones(accountId: accountId)
+        return AccountOverviewEntry(
+            date: .now,
+            snapshot: WidgetSnapshot.load(accountId: accountId),
+            totalRequests: aggregate.total,
+            series: aggregate.series
+        )
+    }
+}
+
 struct ZoneStatusWidget: Widget {
 
     var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "ZoneStatusWidget", provider: ZoneStatusFallbackProvider()) { entry in
+            AccountOverviewWidgetView(entry: entry).daybreakContainer(date: entry.date)
+        }
+        .configurationDisplayName("账号总览")
+        .description("当前账号 24 小时请求与域名运行状态")
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryInline, .accessoryCircular, .accessoryRectangular])
+    }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct ZoneStatusConfigurableWidget: Widget {
+    var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "ZoneStatusWidget", intent: AccountOverviewConfigIntent.self, provider: ZoneStatusProvider()) { entry in
-            AccountOverviewWidgetView(entry: entry)
-                .daybreakContainer(date: entry.date)
+            AccountOverviewWidgetView(entry: entry).daybreakContainer(date: entry.date)
         }
         .configurationDisplayName("账号总览")
         .description("某个账号 24 小时请求与域名运行状态，长按可选择账号")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryInline, .accessoryCircular, .accessoryRectangular])
-        .contentMarginsDisabled()
     }
 }
 

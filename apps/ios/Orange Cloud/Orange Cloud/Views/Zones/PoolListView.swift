@@ -9,17 +9,18 @@
 import SwiftUI
 
 struct PoolListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: PoolListViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: PoolListViewModel
     @State private var editorTarget: PoolEditorTarget?
     @State private var poolToDelete: Pool?
 
     init(session: SessionStore) {
         self.session = session
-        _viewModel = State(initialValue: PoolListViewModel(
+        _viewModel = StateObject(wrappedValue: PoolListViewModel(
             service: session.loadBalancerService,
             accountId: session.selectedAccount?.id ?? ""
         ))
@@ -28,16 +29,18 @@ struct PoolListView: View {
     private var canWrite: Bool { auth.hasScope("load-balancing-monitors-and-pools.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.isLoading && !viewModel.loaded {
                 SkeletonList(rows: 5, icon: .none, trailing: true)
             } else if viewModel.pools.isEmpty {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("没有源站池", systemImage: "server.rack")
                 } description: {
                     Text(canWrite
-                         ? String(localized: "源站池是一组后端服务器，供负载均衡器分发流量。点右上角 + 创建。")
-                         : String(localized: "此账号暂无源站池。"))
+                         ? AppLocalization.string(localized: "源站池是一组后端服务器，供负载均衡器分发流量。点右上角 + 创建。")
+                         : AppLocalization.string(localized: "此账号暂无源站池。"))
                 } actions: {
                     if canWrite {
                         Button("新建源站池") { editorTarget = PoolEditorTarget(pool: nil) }
@@ -54,7 +57,7 @@ struct PoolListView: View {
                                         Button {
                                             Task { await viewModel.toggle(pool, enabled: !(pool.enabled ?? true)) }
                                         } label: {
-                                            Label(pool.enabled == false ? String(localized: "启用") : String(localized: "停用"),
+                                            Label(pool.enabled == false ? AppLocalization.string(localized: "启用") : AppLocalization.string(localized: "停用"),
                                                   systemImage: pool.enabled == false ? "play" : "pause")
                                         }
                                         .tint(.orange)
@@ -70,8 +73,8 @@ struct PoolListView: View {
                         }
                     } footer: {
                         Text(canWrite
-                             ? String(localized: "点按编辑源站，左滑启停，右滑删除。被负载均衡器引用的池无法删除。")
-                             : String(localized: "当前授权仅限读取。"))
+                             ? AppLocalization.string(localized: "点按编辑源站，左滑启停，右滑删除。被负载均衡器引用的池无法删除。")
+                             : AppLocalization.string(localized: "当前授权仅限读取。"))
                     }
                     .glassRow()
                 }
@@ -80,7 +83,7 @@ struct PoolListView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("源站池")
+        .ocNavigationTitle("源站池")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -91,7 +94,7 @@ struct PoolListView: View {
             }
         }
         .task { await viewModel.load() }
-        .sensoryFeedback(.success, trigger: viewModel.didMutate)
+        .ocSensoryFeedback(.success, trigger: viewModel.didMutate)
         .sheet(item: $editorTarget) { target in
             PoolEditorView(existing: target.pool, viewModel: viewModel)
         }
@@ -133,7 +136,7 @@ struct PoolListView: View {
                     }
                 }
                 HStack(spacing: 6) {
-                    Text(String(localized: "\(pool.enabledOriginsCount)/\(pool.originsCount) 源站启用"))
+                    Text(AppLocalization.string(localized: "\(pool.enabledOriginsCount)/\(pool.originsCount) 源站启用"))
                         .font(.caption).foregroundStyle(.secondary)
                     if let health = viewModel.healthText(for: pool) {
                         Text("·").foregroundStyle(.tertiary)
@@ -155,9 +158,10 @@ struct PoolEditorTarget: Identifiable {
 // MARK: - 源站池编辑器
 
 private struct PoolEditorView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let existing: Pool?
-    let viewModel: PoolListViewModel
+    @ObservedObject var viewModel: PoolListViewModel
 
     @Environment(\.dismiss) private var dismiss
 
@@ -197,6 +201,8 @@ private struct PoolEditorView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section("基本") {

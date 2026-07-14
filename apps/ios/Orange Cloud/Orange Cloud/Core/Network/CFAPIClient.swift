@@ -82,7 +82,7 @@ actor CFAPIClient {
             (tempURL, response) = try await session.download(for: request)
         } catch {
             Self.logTransportError("GET", path, "download error", error)
-            throw APIError.networkError(error)
+            throw Self.transportError(error)
         }
         guard let http = response as? HTTPURLResponse else {
             throw APIError.networkError(URLError(.badServerResponse))
@@ -139,7 +139,7 @@ actor CFAPIClient {
             (data, response) = try await session.upload(for: request, fromFile: fileURL, delegate: delegate)
         } catch {
             Self.logTransportError("PUT", path, "upload error", error)
-            throw APIError.networkError(error)
+            throw Self.transportError(error)
         }
         guard let http = response as? HTTPURLResponse else {
             throw APIError.networkError(URLError(.badServerResponse))
@@ -285,7 +285,7 @@ actor CFAPIClient {
             (data, response) = try await session.data(for: request)
         } catch {
             Self.logTransportError(method, path, "(jwt) network error", error)
-            throw APIError.networkError(error)
+            throw Self.transportError(error)
         }
         guard let http = response as? HTTPURLResponse else {
             throw APIError.networkError(URLError(.badServerResponse))
@@ -386,7 +386,7 @@ actor CFAPIClient {
             (data, response) = try await session.data(for: request)
         } catch {
             Self.logTransportError(method, path, "(jwt mp) network error", error)
-            throw APIError.networkError(error)
+            throw Self.transportError(error)
         }
         guard let http = response as? HTTPURLResponse else {
             throw APIError.networkError(URLError(.badServerResponse))
@@ -483,7 +483,7 @@ actor CFAPIClient {
             (data, response) = try await session.data(for: urlRequest)
         } catch {
             Self.logTransportError(method, path, "network error", error)
-            throw APIError.networkError(error)
+            throw Self.transportError(error)
         }
 
         guard let http = response as? HTTPURLResponse else {
@@ -582,6 +582,13 @@ actor CFAPIClient {
         if error is CancellationError { return true }
         if let urlError = error as? URLError, urlError.code == .cancelled { return true }
         return false
+    }
+
+    /// 取消是正常的视图生命周期事件。必须原样向上传递，才能让各 ViewModel 的
+    /// `catch is CancellationError` / `URLError.cancelled` 分支静默处理；其余传输失败
+    /// 才统一包装为用户可见的网络错误。
+    private static func transportError(_ error: Error) -> Error {
+        isCancellation(error) ? error : APIError.networkError(error)
     }
 
     /// 传输层失败统一记录：取消降级 info，其余保持 error

@@ -6,20 +6,19 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
 // MARK: - Queues
 
-@Observable
 @MainActor
-final class QueuesViewModel {
+final class QueuesViewModel: ObservableObject {
 
-    private(set) var queues: [CFQueue] = []
-    var isLoading = false
-    var loaded = false
-    var isSaving = false
-    var error: String?
-    var didChange = false
+    @Published private(set) var queues: [CFQueue] = []
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var isSaving = false
+    @Published var error: String?
+    @Published var didChange = false
 
     private let service: QueueService
     let accountId: String?
@@ -119,16 +118,15 @@ final class QueuesViewModel {
 
 // MARK: - AI Gateway
 
-@Observable
 @MainActor
-final class AIGatewayViewModel {
+final class AIGatewayViewModel: ObservableObject {
 
-    private(set) var gateways: [AIGateway] = []
-    var isLoading = false
-    var loaded = false
-    var isSaving = false
-    var error: String?
-    var didChange = false
+    @Published private(set) var gateways: [AIGateway] = []
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var isSaving = false
+    @Published var error: String?
+    @Published var didChange = false
 
     private let service: AIGatewayService
     let accountId: String?
@@ -186,14 +184,13 @@ final class AIGatewayViewModel {
 
 // MARK: - Durable Objects（只读）
 
-@Observable
 @MainActor
-final class DurableObjectsViewModel {
+final class DurableObjectsViewModel: ObservableObject {
 
-    private(set) var namespaces: [DurableObjectNamespace] = []
-    var isLoading = false
-    var loaded = false
-    var error: String?
+    @Published private(set) var namespaces: [DurableObjectNamespace] = []
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var error: String?
 
     private let service: DurableObjectService
     let accountId: String?
@@ -221,14 +218,13 @@ final class DurableObjectsViewModel {
 
 // MARK: - Workers AI（只读模型目录）
 
-@Observable
 @MainActor
-final class WorkersAIViewModel {
+final class WorkersAIViewModel: ObservableObject {
 
-    private(set) var models: [AIModel] = []
-    var isLoading = false
-    var loaded = false
-    var error: String?
+    @Published private(set) var models: [AIModel] = []
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var error: String?
 
     private let service: WorkersAIService
     let accountId: String?
@@ -240,7 +236,7 @@ final class WorkersAIViewModel {
 
     /// 按任务类型分组（Text Generation / Text-to-Image 等）
     var grouped: [(task: String, models: [AIModel])] {
-        let groups = Dictionary(grouping: models) { $0.taskName.isEmpty ? String(localized: "其它") : $0.taskName }
+        let groups = Dictionary(grouping: models) { $0.taskName.isEmpty ? AppLocalization.string(localized: "其它") : $0.taskName }
         return groups.map { (task: $0.key, models: $0.value.sorted { $0.shortName < $1.shortName }) }
             .sorted { $0.task < $1.task }
     }
@@ -263,16 +259,15 @@ final class WorkersAIViewModel {
 
 // MARK: - Hyperdrive
 
-@Observable
 @MainActor
-final class HyperdriveViewModel {
+final class HyperdriveViewModel: ObservableObject {
 
-    private(set) var configs: [HyperdriveConfig] = []
-    var isLoading = false
-    var loaded = false
-    var isSaving = false
-    var error: String?
-    var didChange = false
+    @Published private(set) var configs: [HyperdriveConfig] = []
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var isSaving = false
+    @Published var error: String?
+    @Published var didChange = false
 
     private let service: HyperdriveService
     let accountId: String?
@@ -348,14 +343,13 @@ final class HyperdriveViewModel {
 
 // MARK: - Durable Objects 对象实例（只读，游标分页）
 
-@Observable
 @MainActor
-final class DurableObjectInstancesViewModel {
+final class DurableObjectInstancesViewModel: ObservableObject {
 
-    private(set) var instances: [DurableObjectInstance] = []
-    var isLoading = false
-    var loaded = false
-    var error: String?
+    @Published private(set) var instances: [DurableObjectInstance] = []
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var error: String?
 
     private var cursor: String?
     var hasMore: Bool { cursor != nil }
@@ -405,14 +399,13 @@ final class DurableObjectInstancesViewModel {
 
 // MARK: - Workers AI 文本生成 Playground
 
-@Observable
 @MainActor
-final class AIPlaygroundViewModel {
+final class AIPlaygroundViewModel: ObservableObject {
 
-    var prompt = ""
-    private(set) var output = ""
-    var isRunning = false
-    var error: String?
+    @Published var prompt = ""
+    @Published private(set) var output = ""
+    @Published var isRunning = false
+    @Published var error: String?
 
     private let service: WorkersAIService
     let accountId: String?

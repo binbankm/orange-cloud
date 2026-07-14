@@ -11,7 +11,7 @@ import SwiftUI
 /// 有 scope 则正常导航，无 scope 则显示锁图标并弹出说明。
 struct PermissionGatedNavigationLink<Destination: View>: View {
 
-    let label:         String
+    let label:         LocalizedStringKey
     let systemImage:   String
     let requiredScope: String
     var tint: Color = .ocOrange
@@ -19,7 +19,7 @@ struct PermissionGatedNavigationLink<Destination: View>: View {
     var showsChevron: Bool = false
     @ViewBuilder let destination: () -> Destination
 
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
     @State private var showDenied = false
 
     private var rowLabel: some View {
@@ -63,7 +63,7 @@ struct PermissionGatedNavigationLink<Destination: View>: View {
                 }
                 Button("好", role: .cancel) {}
             } message: {
-                Text("当前授权未包含「\(label)」的访问权限（\(requiredScope)）。点「一键重授权」补齐，无需退出登录。")
+                Text("当前授权未包含「\(Text(label))」的访问权限（\(requiredScope)）。点「一键重授权」补齐，无需退出登录。")
             }
         }
     }
@@ -75,7 +75,7 @@ struct PermissionGatedNavigationLink<Destination: View>: View {
 /// 急切构造的目的页内部再 push 会失灵/错乱，值式 + 栈根 navdest 才能单栈正常逐级 push。
 struct PermissionGatedValueLink<V: Hashable>: View {
 
-    let label:         String
+    let label:         LocalizedStringKey
     let systemImage:   String
     let requiredScope: String
     var tint: Color = .ocOrange
@@ -83,7 +83,7 @@ struct PermissionGatedValueLink<V: Hashable>: View {
     var showsChevron: Bool = false
     let value:         V
 
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
     @State private var showDenied = false
 
     private var rowLabel: some View {
@@ -126,7 +126,7 @@ struct PermissionGatedValueLink<V: Hashable>: View {
                 }
                 Button("好", role: .cancel) {}
             } message: {
-                Text("当前授权未包含「\(label)」的访问权限（\(requiredScope)）。点「一键重授权」补齐，无需退出登录。")
+                Text("当前授权未包含「\(Text(label))」的访问权限（\(requiredScope)）。点「一键重授权」补齐，无需退出登录。")
             }
         }
     }

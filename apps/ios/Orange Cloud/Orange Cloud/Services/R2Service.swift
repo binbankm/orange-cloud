@@ -168,7 +168,7 @@ struct R2Service {
         guard try await objectExists(accountId: accountId, bucketName: bucketName, key: destinationKey) else {
             throw APIError.cloudflareError(
                 code: 0,
-                message: String(localized: "复制后未在目标确认到对象，已保留原对象未删除")
+                message: AppLocalization.string(localized: "复制后未在目标确认到对象，已保留原对象未删除")
             )
         }
         try await deleteObject(accountId: accountId, bucketName: bucketName, key: sourceKey)

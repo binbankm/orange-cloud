@@ -26,11 +26,11 @@ nonisolated enum ZipReader {
 
         var errorDescription: String? {
             switch self {
-            case .notZip:                    String(localized: "不是有效的 ZIP 文件")
-            case .corrupted:                 String(localized: "ZIP 文件已损坏或格式不受支持")
-            case .unsupportedMethod(let m):  String(localized: "不支持的压缩方式（\(m)）")
-            case .zip64Unsupported:          String(localized: "暂不支持 Zip64（超大压缩包）")
-            case .inflateFailed(let name):   String(localized: "解压「\(name)」失败")
+            case .notZip:                    AppLocalization.string(localized: "不是有效的 ZIP 文件")
+            case .corrupted:                 AppLocalization.string(localized: "ZIP 文件已损坏或格式不受支持")
+            case .unsupportedMethod(let m):  AppLocalization.string(localized: "不支持的压缩方式（\(m)）")
+            case .zip64Unsupported:          AppLocalization.string(localized: "暂不支持 Zip64（超大压缩包）")
+            case .inflateFailed(let name):   AppLocalization.string(localized: "解压「\(name)」失败")
             }
         }
     }

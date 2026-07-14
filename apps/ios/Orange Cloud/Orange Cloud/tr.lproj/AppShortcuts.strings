@@ -1,0 +1,3 @@
+"打开 ${applicationName}" = "${applicationName} uygulamasını aç";
+"查询 ${applicationName} 域名状态" = "${applicationName} ile alan adı durumunu kontrol et";
+"用 ${applicationName} 查域名" = "${applicationName} ile alan adlarını kontrol et";

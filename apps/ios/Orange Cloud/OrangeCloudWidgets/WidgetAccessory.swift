@@ -22,11 +22,20 @@ struct DaybreakBackground: ViewModifier {
     let date: Date
 
     func body(content: Content) -> some View {
-        switch family {
-        case .systemSmall, .systemMedium, .systemLarge, .systemExtraLarge:
-            content.containerBackground(for: .widget) { WidgetSky(date: date) }
-        default:
-            content.containerBackground(.clear, for: .widget)
+        if #available(iOSApplicationExtension 17.0, *) {
+            switch family {
+            case .systemSmall, .systemMedium, .systemLarge, .systemExtraLarge:
+                content.containerBackground(for: .widget) { WidgetSky(date: date) }
+            default:
+                content.containerBackground(.clear, for: .widget)
+            }
+        } else {
+            switch family {
+            case .systemSmall, .systemMedium, .systemLarge, .systemExtraLarge:
+                content.background(WidgetSky(date: date))
+            default:
+                content
+            }
         }
     }
 }

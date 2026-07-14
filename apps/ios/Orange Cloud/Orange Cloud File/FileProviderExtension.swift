@@ -329,9 +329,7 @@ final class FileProviderExtension: NSObject, NSFileProviderReplicatedExtension {
         case .notAuthenticated:
             return NSFileProviderError(.notAuthenticated)
         case .tooLarge:
-            return NSError(domain: NSFileProviderError.errorDomain,
-                           code: NSFileProviderError.cannotSynchronize.rawValue,
-                           userInfo: [NSLocalizedDescriptionKey: "文件超过约 300 MB，Cloudflare API 无法分片上传，请用更小的文件。"])
+            return NSError(domain: NSFileProviderError.errorDomain, code: NSFileProviderError.Code.serverUnreachable.rawValue, userInfo: [NSLocalizedDescriptionKey: String(localized: "文件超过约 300 MB，Cloudflare API 无法分片上传，请用更小的文件。")])
         case .http(let status) where status == 404:
             return NSFileProviderError(.noSuchItem)
         case .http, .badResponse:

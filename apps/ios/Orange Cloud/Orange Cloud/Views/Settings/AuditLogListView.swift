@@ -8,12 +8,16 @@
 import SwiftUI
 
 struct AuditLogListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let session: SessionStore
 
-    @State private var vm: AuditLogViewModel?
+    @StateObject private var vmStore = OptionalObservableObjectStore()
+    private var vm: AuditLogViewModel? { vmStore.value(as: AuditLogViewModel.self) }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if let vm {
                 content(vm)
@@ -23,13 +27,13 @@ struct AuditLogListView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("审计日志")
+        .ocNavigationTitle("审计日志")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await session.ensureAccounts()
             guard vm == nil, let accountId = session.selectedAccount?.id else { return }
             let model = AuditLogViewModel(service: session.auditLogService, accountId: accountId)
-            vm = model
+            vmStore.set(model)
             await model.load()
         }
     }
@@ -40,10 +44,10 @@ struct AuditLogListView: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if vm.entries.isEmpty {
-            ContentUnavailableView {
+            OCContentUnavailableView {
                 Label("暂无审计记录", systemImage: "clock.arrow.circlepath")
             } description: {
-                Text(vm.error ?? String(localized: "最近 30 天没有可显示的账号操作记录。"))
+                Text(vm.error ?? AppLocalization.string(localized: "最近 30 天没有可显示的账号操作记录。"))
             }
         } else {
             List {
@@ -77,19 +81,20 @@ struct AuditLogListView: View {
 // MARK: - 单条记录
 
 private struct AuditLogRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let entry: AuditLogEntry
 
     private var title: String {
         entry.action?.description?.nilIfEmpty
             ?? entry.action?.type?.nilIfEmpty
-            ?? String(localized: "未知操作")
+            ?? AppLocalization.string(localized: "未知操作")
     }
 
     private var subtitle: String {
         let who = entry.actor?.email?.nilIfEmpty
             ?? entry.actor?.type?.nilIfEmpty
-            ?? String(localized: "系统")
+            ?? AppLocalization.string(localized: "系统")
         if let product = entry.resource?.product?.nilIfEmpty {
             return "\(product) · \(who)"
         }
@@ -98,10 +103,12 @@ private struct AuditLogRow: View {
 
     private var relativeTime: String {
         guard let date = entry.timestamp else { return entry.action?.time ?? "" }
-        return date.formatted(.relative(presentation: .named))
+        return AppLocalization.relativeDate(date)
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         HStack(spacing: 12) {
             statusIcon
             VStack(alignment: .leading, spacing: 3) {

@@ -174,13 +174,13 @@ nonisolated enum WorkerInvocationStatus {
 
     static func label(_ status: String) -> String {
         switch status {
-        case "success":              String(localized: "成功")
-        case "scriptThrewException": String(localized: "脚本异常")
-        case "exceededCpu":          String(localized: "超出 CPU 限制")
-        case "exceededMemory":       String(localized: "超出内存限制")
-        case "clientDisconnected":   String(localized: "客户端断开")
-        case "canceled":             String(localized: "已取消")
-        case "responseStreamDisconnected": String(localized: "响应流断开")
+        case "success":              AppLocalization.string(localized: "成功")
+        case "scriptThrewException": AppLocalization.string(localized: "脚本异常")
+        case "exceededCpu":          AppLocalization.string(localized: "超出 CPU 限制")
+        case "exceededMemory":       AppLocalization.string(localized: "超出内存限制")
+        case "clientDisconnected":   AppLocalization.string(localized: "客户端断开")
+        case "canceled":             AppLocalization.string(localized: "已取消")
+        case "responseStreamDisconnected": AppLocalization.string(localized: "响应流断开")
         default:                     status
         }
     }

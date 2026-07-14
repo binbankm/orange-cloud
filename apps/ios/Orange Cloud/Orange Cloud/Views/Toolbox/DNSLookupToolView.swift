@@ -8,10 +8,13 @@
 import SwiftUI
 
 struct DNSLookupToolView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @State private var vm = DNSLookupViewModel()
+    @StateObject private var vm = DNSLookupViewModel()
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         ScrollView {
             VStack(spacing: OCLayout.islandGap) {
                 VStack(spacing: 12) {
@@ -50,7 +53,7 @@ struct DNSLookupToolView: View {
                 } else if let error = vm.error {
                     ToolNotice(systemImage: "exclamationmark.triangle", title: "查询失败", message: error, tint: .orange)
                 } else if vm.hasRun && vm.results.isEmpty {
-                    ToolNotice(systemImage: "questionmark.circle", title: "无记录", message: String(localized: "该名称下没有此类型的记录。"))
+                    ToolNotice(systemImage: "questionmark.circle", title: "无记录", message: AppLocalization.string(localized: "该名称下没有此类型的记录。"))
                 } else if !vm.results.isEmpty {
                     ToolResultIsland(title: "记录") {
                         ForEach(Array(vm.results.enumerated()), id: \.element.id) { index, rec in
@@ -81,7 +84,7 @@ struct DNSLookupToolView: View {
             .padding(OCLayout.pagePadding)
         }
         .background { SkyBackground() }
-        .navigationTitle("DNS 查询")
+        .ocNavigationTitle("DNS 查询")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

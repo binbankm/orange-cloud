@@ -14,19 +14,22 @@
 import SwiftUI
 
 struct ZoneRulesHubView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let zoneId: String
     let zoneName: String
     let session: SessionStore
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         // 本页 eager 门控行的保留判据：目的页是叶子（ZonePhaseRules / Transform / 缓存规则 /
         // Page Rules / URL 规范化内部只开 sheet、不再 push）。Bulk Redirects 与 Snippets
         // 的目的页还要继续 push，已改值式（ZoneRoute，navdest 在宿主栈根）。
         List {
             Section("重定向") {
                 ProGatedNavigationLink(
-                    label: String(localized: "单条重定向"),
+                    label: "单条重定向",
                     systemImage: "arrow.uturn.right",
                     requiredScope: ZoneRulePhase.singleRedirect.readScope,
                     feature: .zoneRules,
@@ -49,7 +52,7 @@ struct ZoneRulesHubView: View {
 
             Section("流量与内容") {
                 ProGatedNavigationLink(
-                    label: String(localized: "源站规则"),
+                    label: "源站规则",
                     systemImage: "server.rack",
                     requiredScope: ZoneRulePhase.origin.readScope,
                     feature: .zoneRules,
@@ -58,7 +61,7 @@ struct ZoneRulesHubView: View {
                     ZonePhaseRulesListView(zoneId: zoneId, phase: .origin, session: session)
                 }
                 ProGatedNavigationLink(
-                    label: String(localized: "配置规则"),
+                    label: "配置规则",
                     systemImage: "slider.horizontal.3",
                     requiredScope: ZoneRulePhase.config.readScope,
                     feature: .zoneRules,
@@ -67,7 +70,7 @@ struct ZoneRulesHubView: View {
                     ZonePhaseRulesListView(zoneId: zoneId, phase: .config, session: session)
                 }
                 ProGatedNavigationLink(
-                    label: String(localized: "压缩规则"),
+                    label: "压缩规则",
                     systemImage: "rectangle.compress.vertical",
                     requiredScope: ZoneRulePhase.compression.readScope,
                     feature: .zoneRules,
@@ -76,7 +79,7 @@ struct ZoneRulesHubView: View {
                     ZonePhaseRulesListView(zoneId: zoneId, phase: .compression, session: session)
                 }
                 ProGatedNavigationLink(
-                    label: String(localized: "自定义错误"),
+                    label: "自定义错误",
                     systemImage: "exclamationmark.bubble",
                     requiredScope: ZoneRulePhase.customErrors.readScope,
                     feature: .zoneRules,
@@ -97,7 +100,7 @@ struct ZoneRulesHubView: View {
                     ZoneTransformRulesView(zoneId: zoneId, session: session)
                 }
                 ProGatedNavigationLink(
-                    label: String(localized: "缓存规则"),
+                    label: "缓存规则",
                     systemImage: "bolt.horizontal",
                     requiredScope: "cache-settings.read",
                     feature: .cacheRules,
@@ -128,7 +131,7 @@ struct ZoneRulesHubView: View {
                     PageRulesListView(zoneId: zoneId, session: session)
                 }
                 PermissionGatedNavigationLink(
-                    label: String(localized: "URL 规范化"),
+                    label: "URL 规范化",
                     systemImage: "textformat.abc.dottedunderline",
                     requiredScope: "config-settings.read",
                     tint: .teal
@@ -144,7 +147,7 @@ struct ZoneRulesHubView: View {
         }
         .daybreakList()
         .background { SkyBackground() }
-        .navigationTitle("规则")
+        .ocNavigationTitle("规则")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -152,9 +155,10 @@ struct ZoneRulesHubView: View {
 // MARK: - Rulesets phase 泛化列表（查看 / 启停 / 删除）
 
 struct ZonePhaseRulesListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: ZonePhaseRulesViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: ZonePhaseRulesViewModel
     @State private var showDenied = false
     @State private var ruleToDelete: ZoneRule?
     @State private var detailRule: ZoneRule?
@@ -164,7 +168,7 @@ struct ZonePhaseRulesListView: View {
 
     init(zoneId: String, phase: ZoneRulePhase, session: SessionStore) {
         self.phase = phase
-        _viewModel = State(initialValue: ZonePhaseRulesViewModel(
+        _viewModel = StateObject(wrappedValue: ZonePhaseRulesViewModel(
             service: session.zoneRulesetService, zoneId: zoneId, phase: phase
         ))
     }
@@ -172,16 +176,18 @@ struct ZonePhaseRulesListView: View {
     private var canWrite: Bool { auth.hasScope(phase.writeScope) }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.isLoading && !viewModel.loaded {
                 SkeletonList(rows: 5, icon: .none, trailing: true)
             } else if viewModel.rules.isEmpty {
-                ContentUnavailableView {
-                    Label(String(localized: "没有\(phase.title)"), systemImage: phase.systemImage)
+                OCContentUnavailableView {
+                    Label(AppLocalization.string(localized: "没有\(phase.title)"), systemImage: phase.systemImage)
                 } description: {
                     Text(canWrite
-                         ? String(localized: "此域名还没有这类规则。点右上角 + 创建第一条。")
-                         : String(localized: "此域名还没有这类规则。当前授权仅限读取（\(phase.readScope)），无法创建。"))
+                         ? AppLocalization.string(localized: "此域名还没有这类规则。点右上角 + 创建第一条。")
+                         : AppLocalization.string(localized: "此域名还没有这类规则。当前授权仅限读取（\(phase.readScope)），无法创建。"))
                 } actions: {
                     if canWrite {
                         Button("添加规则") { editorTarget = ZoneRuleEditorTarget(rule: nil) }
@@ -200,7 +206,7 @@ struct ZonePhaseRulesListView: View {
                                         Button {
                                             Task { await viewModel.setEnabled(rule, enabled: !(rule.enabled ?? true)) }
                                         } label: {
-                                            Label(rule.enabled == false ? String(localized: "启用") : String(localized: "停用"),
+                                            Label(rule.enabled == false ? AppLocalization.string(localized: "启用") : AppLocalization.string(localized: "停用"),
                                                   systemImage: rule.enabled == false ? "play" : "pause")
                                         }
                                         .tint(.orange)
@@ -216,8 +222,8 @@ struct ZonePhaseRulesListView: View {
                         }
                     } footer: {
                         Text(canWrite
-                             ? String(localized: "规则按从上到下顺序执行；点按编辑，左滑启停，右滑删除。")
-                             : String(localized: "当前授权仅限读取（\(phase.readScope)），无法修改规则。"))
+                             ? AppLocalization.string(localized: "规则按从上到下顺序执行；点按编辑，左滑启停，右滑删除。")
+                             : AppLocalization.string(localized: "当前授权仅限读取（\(phase.readScope)），无法修改规则。"))
                     }
                     .glassRow()
                 }
@@ -236,7 +242,7 @@ struct ZonePhaseRulesListView: View {
             }
         }
         .task { await viewModel.load() }
-        .sensoryFeedback(.success, trigger: viewModel.didMutate)
+        .ocSensoryFeedback(.success, trigger: viewModel.didMutate)
         .sheet(item: $detailRule) { rule in
             ZoneRuleDetailSheet(rule: rule, phase: phase)
         }
@@ -249,7 +255,7 @@ struct ZonePhaseRulesListView: View {
             titleVisibility: .visible
         ) {
             if let rule = ruleToDelete {
-                Button("删除「\(rule.description ?? String(localized: "未命名规则"))」", role: .destructive) {
+                Button("删除「\(rule.description ?? AppLocalization.string(localized: "未命名规则"))」", role: .destructive) {
                     Task { await viewModel.delete(rule) }
                 }
             }
@@ -283,7 +289,7 @@ struct ZonePhaseRulesListView: View {
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(rule.description ?? String(localized: "未命名规则"))
+                    Text(rule.description ?? AppLocalization.string(localized: "未命名规则"))
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
@@ -320,18 +326,21 @@ struct ZoneRuleEditorTarget: Identifiable {
 
 /// 规则详情（只读）：表达式 + 动作 + 参数原样 JSON
 private struct ZoneRuleDetailSheet: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let rule: ZoneRule
     let phase: ZoneRulePhase
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             List {
                 Section("规则") {
-                    LabeledContent("名称", value: rule.description ?? String(localized: "未命名规则"))
+                    LabeledContent("名称", value: rule.description ?? AppLocalization.string(localized: "未命名规则"))
                     LabeledContent("动作", value: rule.action ?? "—")
-                    LabeledContent("状态", value: rule.enabled == false ? String(localized: "已停用") : String(localized: "已启用"))
+                    LabeledContent("状态", value: rule.enabled == false ? AppLocalization.string(localized: "已停用") : AppLocalization.string(localized: "已启用"))
                 }
                 .glassRow()
                 if let expr = rule.expression, !expr.isEmpty {
@@ -374,14 +383,15 @@ private struct ZoneRuleDetailSheet: View {
 // MARK: - Page Rules（传统）
 
 struct PageRulesListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: PageRulesViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: PageRulesViewModel
     @State private var showDenied = false
     @State private var ruleToDelete: PageRule?
 
     init(zoneId: String, session: SessionStore) {
-        _viewModel = State(initialValue: PageRulesViewModel(
+        _viewModel = StateObject(wrappedValue: PageRulesViewModel(
             service: session.zoneRulesetService, zoneId: zoneId
         ))
     }
@@ -389,11 +399,13 @@ struct PageRulesListView: View {
     private var canWrite: Bool { auth.hasScope("page-rules.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.isLoading && !viewModel.loaded {
                 SkeletonList(rows: 5, icon: .none, trailing: true)
             } else if viewModel.rules.isEmpty {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("没有 Page Rules", systemImage: "doc.text.below.ecg")
                 } description: {
                     Text("Page Rules 是传统功能，Cloudflare 建议迁移到新的规则产品；已有规则可在此查看、启停与删除。")
@@ -423,7 +435,7 @@ struct PageRulesListView: View {
                                     Button {
                                         Task { await viewModel.setActive(rule, active: !rule.isActive) }
                                     } label: {
-                                        Label(rule.isActive ? String(localized: "停用") : String(localized: "启用"),
+                                        Label(rule.isActive ? AppLocalization.string(localized: "停用") : AppLocalization.string(localized: "启用"),
                                               systemImage: rule.isActive ? "pause" : "play")
                                     }
                                     .tint(.orange)
@@ -439,8 +451,8 @@ struct PageRulesListView: View {
                         }
                     } footer: {
                         Text(canWrite
-                             ? String(localized: "左滑启停，右滑删除。")
-                             : String(localized: "当前授权仅限读取（page-rules.read），无法修改规则。"))
+                             ? AppLocalization.string(localized: "左滑启停，右滑删除。")
+                             : AppLocalization.string(localized: "当前授权仅限读取（page-rules.read），无法修改规则。"))
                     }
                     .glassRow()
                 }
@@ -449,10 +461,10 @@ struct PageRulesListView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("Page Rules")
+        .ocNavigationTitle("Page Rules")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load() }
-        .sensoryFeedback(.success, trigger: viewModel.didMutate)
+        .ocSensoryFeedback(.success, trigger: viewModel.didMutate)
         .confirmationDialog(
             "删除规则",
             isPresented: .init(get: { ruleToDelete != nil }, set: { if !$0 { ruleToDelete = nil } }),
@@ -490,12 +502,13 @@ struct PageRulesListView: View {
 // MARK: - URL Normalization
 
 struct URLNormalizationView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: URLNormalizationViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: URLNormalizationViewModel
 
     init(zoneId: String, session: SessionStore) {
-        _viewModel = State(initialValue: URLNormalizationViewModel(
+        _viewModel = StateObject(wrappedValue: URLNormalizationViewModel(
             service: session.zoneRulesetService, zoneId: zoneId
         ))
     }
@@ -503,6 +516,8 @@ struct URLNormalizationView: View {
     private var canWrite: Bool { auth.hasScope("config-settings.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         List {
             if let value = viewModel.value {
                 Section {
@@ -526,8 +541,8 @@ struct URLNormalizationView: View {
                     .disabled(!canWrite || viewModel.isMutating)
                 } footer: {
                     Text(canWrite
-                         ? String(localized: "URL 规范化影响所有规则的表达式匹配方式，修改立即生效。")
-                         : String(localized: "当前授权仅限读取（config-settings.read），无法修改。"))
+                         ? AppLocalization.string(localized: "URL 规范化影响所有规则的表达式匹配方式，修改立即生效。")
+                         : AppLocalization.string(localized: "当前授权仅限读取（config-settings.read），无法修改。"))
                 }
                 .glassRow()
             } else if viewModel.isLoading {
@@ -537,10 +552,10 @@ struct URLNormalizationView: View {
         }
         .daybreakList()
         .background { SkyBackground() }
-        .navigationTitle("URL 规范化")
+        .ocNavigationTitle("URL 规范化")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load() }
-        .sensoryFeedback(.success, trigger: viewModel.didMutate)
+        .ocSensoryFeedback(.success, trigger: viewModel.didMutate)
         .alert("出错了", isPresented: .init(
             get: { viewModel.error != nil },
             set: { if !$0 { viewModel.error = nil } }

@@ -16,20 +16,20 @@ nonisolated enum PurgeMode: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .url:    String(localized: "URL")
-        case .prefix: String(localized: "前缀")
-        case .host:   String(localized: "主机名")
-        case .tag:    String(localized: "标签")
+        case .url:    AppLocalization.string(localized: "URL")
+        case .prefix: AppLocalization.string(localized: "前缀")
+        case .host:   AppLocalization.string(localized: "主机名")
+        case .tag:    AppLocalization.string(localized: "标签")
         }
     }
 
     /// 输入提示（部分粒度需要带上当前域名做示例）
     func hint(zoneName: String) -> String {
         switch self {
-        case .url:    String(localized: "每行一个完整 URL，例如 https://\(zoneName)/style.css")
-        case .prefix: String(localized: "每行一个 URL 前缀，例如 \(zoneName)/news")
-        case .host:   String(localized: "每行一个主机名，例如 assets.\(zoneName)")
-        case .tag:    String(localized: "每行一个 Cache-Tag（需源站返回 Cache-Tag 响应头）")
+        case .url:    AppLocalization.string(localized: "每行一个完整 URL，例如 https://\(zoneName)/style.css")
+        case .prefix: AppLocalization.string(localized: "每行一个 URL 前缀，例如 \(zoneName)/news")
+        case .host:   AppLocalization.string(localized: "每行一个主机名，例如 assets.\(zoneName)")
+        case .tag:    AppLocalization.string(localized: "每行一个 Cache-Tag（需源站返回 Cache-Tag 响应头）")
         }
     }
 
@@ -37,6 +37,7 @@ nonisolated enum PurgeMode: String, CaseIterable, Identifiable {
 }
 
 struct PurgeCacheSheet: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let zoneName: String
     /// 交给 ViewModel 执行；调用方按 mode 分发到对应的 purge 方法
@@ -71,6 +72,8 @@ struct PurgeCacheSheet: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
@@ -110,10 +113,10 @@ struct PurgeCacheSheet: View {
                 .padding()
             }
             .background { SkyBackground() }
-            .navigationTitle("按目标清理缓存")
+            .ocNavigationTitle("按目标清理缓存")
             .navigationBarTitleDisplayMode(.inline)
             // 切换粒度时清空已输入内容，避免把 URL 当成标签误提交
-            .onChange(of: mode) { text = "" }
+            .onChange(of: mode) { _ in text = "" }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }

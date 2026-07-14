@@ -7,13 +7,13 @@
 //  只读、零风险：把确定性聚合好的数字喂给模型，明确要求「只用给定数字、不得编造」，
 //  模型只负责措辞与挑重点（大幅涨跌、威胁集中、命中率偏低、来源集中等）。
 //
-//  全部离线、免费、不出设备。基线 iOS 17：FoundationModels 调用走 #available(iOS 26) 守卫。
+//  全部离线、免费、不出设备。基线 iOS 16：FoundationModels 调用走 #available(iOS 26) 守卫。
 //
 
 import Foundation
 import FoundationModels
 
-// MARK: - 对外纯数据类型（不依赖 FoundationModels，iOS 17 也可引用）
+// MARK: - 对外纯数据类型（不依赖 FoundationModels，iOS 16 也可引用）
 
 /// 喂给模型的确定性事实集——全部由 ViewModel 的聚合值拼成，模型不接触原始数据。
 nonisolated struct TrafficSummaryInput: Sendable {

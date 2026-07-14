@@ -10,13 +10,14 @@ import SwiftUI
 import UIKit
 
 struct TunnelConnectView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let tunnel: Tunnel
     let accountId: String
     let session: SessionStore
     var onDone: (() -> Void)?
 
-    @State private var viewModel: TunnelDetailViewModel
+    @StateObject private var viewModel: TunnelDetailViewModel
     @State private var revealed = false
     @State private var copied = false
 
@@ -25,7 +26,7 @@ struct TunnelConnectView: View {
         self.accountId = accountId
         self.session = session
         self.onDone = onDone
-        _viewModel = State(initialValue: TunnelDetailViewModel(
+        _viewModel = StateObject(wrappedValue: TunnelDetailViewModel(
             tunnel: tunnel, accountId: accountId, session: session, canWriteDNS: false
         ))
     }
@@ -35,6 +36,8 @@ struct TunnelConnectView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         List {
             Section {
                 Text("在目标机器上安装 cloudflared，并以管理员身份运行下面的命令，隧道即可连接。")
@@ -67,14 +70,13 @@ struct TunnelConnectView: View {
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(Color.ocOrangeText)
                     }
-                    .contentTransition(.symbolEffect(.replace))
                 } else if viewModel.isLoadingToken {
                     HStack(spacing: 8) {
                         ProgressView()
                         Text("获取令牌…").foregroundStyle(.secondary)
                     }
                 } else {
-                    Text(viewModel.error ?? String(localized: "无法获取令牌"))
+                    Text(viewModel.error ?? AppLocalization.string(localized: "无法获取令牌"))
                         .font(.footnote)
                         .foregroundStyle(.red)
                 }
@@ -86,9 +88,9 @@ struct TunnelConnectView: View {
             .glassRow()
         }
         .daybreakList()
-        .navigationTitle("连接隧道")
+        .ocNavigationTitle("连接隧道")
         .navigationBarTitleDisplayMode(.inline)
-        .sensoryFeedback(.success, trigger: copied)
+        .ocSensoryFeedback(.success, trigger: copied)
         .task { await viewModel.loadToken() }
         .toolbar {
             if let onDone {

@@ -8,11 +8,12 @@
 import SwiftUI
 
 struct PagesProjectListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: PagesProjectListViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: PagesProjectListViewModel
     @State private var searchText = ""
     @State private var showCreate = false
     @State private var writeDenied = false
@@ -23,7 +24,7 @@ struct PagesProjectListView: View {
 
     init(session: SessionStore) {
         self.session = session
-        _viewModel = State(initialValue: PagesProjectListViewModel(service: session.pagesService))
+        _viewModel = StateObject(wrappedValue: PagesProjectListViewModel(service: session.pagesService))
     }
 
     private var filtered: [PagesProject] {
@@ -38,14 +39,16 @@ struct PagesProjectListView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.isLoading && !viewModel.loaded {
                 SkeletonList(rows: 6, trailing: true)
             } else if viewModel.projects.isEmpty {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("没有 Pages 项目", systemImage: "doc.richtext")
                 } description: {
-                    Text(canWrite ? String(localized: "点击右上角 + 创建项目，或在此查看部署、重试 / 回滚与构建配置。") : String(localized: "在 Cloudflare Dashboard 创建 Pages 项目后，在此查看部署、重试 / 回滚与构建配置。"))
+                    Text(canWrite ? AppLocalization.string(localized: "点击右上角 + 创建项目，或在此查看部署、重试 / 回滚与构建配置。") : AppLocalization.string(localized: "在 Cloudflare Dashboard 创建 Pages 项目后，在此查看部署、重试 / 回滚与构建配置。"))
                 } actions: {
                     if canWrite {
                         Button("创建项目") { showCreate = true }
@@ -55,7 +58,7 @@ struct PagesProjectListView: View {
                     }
                 }
             } else if filtered.isEmpty {
-                ContentUnavailableView.search(text: searchText)
+                OCContentUnavailableView.search(text: searchText)
             } else {
                 List {
                     Section {
@@ -92,7 +95,7 @@ struct PagesProjectListView: View {
         .sheet(isPresented: $showCreate) {
             PagesCreateView(viewModel: viewModel, accountId: session.selectedAccount?.id ?? "")
         }
-        .sensoryFeedback(.success, trigger: viewModel.didCreate)
+        .ocSensoryFeedback(.success, trigger: viewModel.didCreate)
         .task { await load() }
         .alert("权限不足", isPresented: $writeDenied) {
             Button("好", role: .cancel) {}
@@ -116,8 +119,10 @@ struct PagesProjectListView: View {
 }
 
 private struct PagesProjectRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let project: PagesProject
     var body: some View {
+        let _ = preferences.languageRaw
         HStack(spacing: 12) {
             TintIcon(systemImage: "doc.richtext", color: .ocOrange)
             VStack(alignment: .leading, spacing: 2) {
@@ -143,8 +148,10 @@ private struct PagesProjectRow: View {
 
 /// 部署状态徽章（列表 / 详情 / 阶段共用）
 struct PagesStatusBadge: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let status: PagesDeployStatus
     var body: some View {
+        let _ = preferences.languageRaw
         Text(status.label)
             .font(.caption2.weight(.semibold))
             .foregroundStyle(color)

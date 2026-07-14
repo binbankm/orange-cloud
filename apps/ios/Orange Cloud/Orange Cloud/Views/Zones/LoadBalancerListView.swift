@@ -9,19 +9,20 @@
 import SwiftUI
 
 struct LoadBalancerListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let zoneName: String
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: LoadBalancerListViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: LoadBalancerListViewModel
     @State private var editorTarget: LBEditorTarget?
     @State private var lbToDelete: LoadBalancer?
 
     init(zoneId: String, zoneName: String, session: SessionStore) {
         self.zoneName = zoneName
         self.session = session
-        _viewModel = State(initialValue: LoadBalancerListViewModel(
+        _viewModel = StateObject(wrappedValue: LoadBalancerListViewModel(
             service: session.loadBalancerService,
             zoneId: zoneId,
             accountId: session.selectedAccount?.id ?? ""
@@ -31,12 +32,14 @@ struct LoadBalancerListView: View {
     private var canWrite: Bool { auth.hasScope("load-balancers.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         List {
             lbSection
             accountResourcesSection
         }
         .daybreakList()
-        .navigationTitle("负载均衡")
+        .ocNavigationTitle("负载均衡")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -48,7 +51,7 @@ struct LoadBalancerListView: View {
         }
         .task { await viewModel.load() }
         .refreshable { await viewModel.load() }
-        .sensoryFeedback(.success, trigger: viewModel.didMutate)
+        .ocSensoryFeedback(.success, trigger: viewModel.didMutate)
         .sheet(item: $editorTarget) { target in
             LoadBalancerEditorView(existing: target.lb, viewModel: viewModel)
         }
@@ -79,8 +82,8 @@ struct LoadBalancerListView: View {
                 ProgressView().frame(maxWidth: .infinity).padding(.vertical, 8)
             } else if viewModel.loadBalancers.isEmpty {
                 Text(canWrite
-                     ? String(localized: "暂无负载均衡器。点右上角 + 创建（需先有源站池）。")
-                     : String(localized: "此域名暂无负载均衡器。"))
+                     ? AppLocalization.string(localized: "暂无负载均衡器。点右上角 + 创建（需先有源站池）。")
+                     : AppLocalization.string(localized: "此域名暂无负载均衡器。"))
                     .font(.footnote).foregroundStyle(.secondary)
             } else {
                 ForEach(viewModel.loadBalancers) { lb in
@@ -90,7 +93,7 @@ struct LoadBalancerListView: View {
                                 Button {
                                     Task { await viewModel.toggle(lb, enabled: !(lb.enabled ?? true)) }
                                 } label: {
-                                    Label(lb.enabled == false ? String(localized: "启用") : String(localized: "停用"),
+                                    Label(lb.enabled == false ? AppLocalization.string(localized: "启用") : AppLocalization.string(localized: "停用"),
                                           systemImage: lb.enabled == false ? "play" : "pause")
                                 }
                                 .tint(.orange)
@@ -109,8 +112,8 @@ struct LoadBalancerListView: View {
             Text("负载均衡器（\(zoneName)）")
         } footer: {
             Text(canWrite
-                 ? String(localized: "点按编辑，左滑启停，右滑删除。改动会立即影响线上流量分发。")
-                 : String(localized: "当前授权仅限读取（load-balancers.read）。"))
+                 ? AppLocalization.string(localized: "点按编辑，左滑启停，右滑删除。改动会立即影响线上流量分发。")
+                 : AppLocalization.string(localized: "当前授权仅限读取（load-balancers.read）。"))
         }
         .glassRow()
     }
@@ -126,14 +129,14 @@ struct LoadBalancerListView: View {
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                     Spacer()
-                    Text(lb.enabled == false ? String(localized: "已停用") : String(localized: "已启用"))
+                    Text(lb.enabled == false ? AppLocalization.string(localized: "已停用") : AppLocalization.string(localized: "已启用"))
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(lb.enabled == false ? Color.secondary : Color.green)
                     if canWrite {
                         Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
                     }
                 }
-                Text(String(localized: "策略：\(lb.steeringLabel) · \(lb.defaultPools?.count ?? 0) 个默认池"))
+                Text(AppLocalization.string(localized: "策略：\(lb.steeringLabel) · \(lb.defaultPools?.count ?? 0) 个默认池"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -178,9 +181,10 @@ struct LBEditorTarget: Identifiable {
 // MARK: - 负载均衡器编辑器
 
 private struct LoadBalancerEditorView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let existing: LoadBalancer?
-    let viewModel: LoadBalancerListViewModel
+    @ObservedObject var viewModel: LoadBalancerListViewModel
 
     @Environment(\.dismiss) private var dismiss
 
@@ -221,6 +225,8 @@ private struct LoadBalancerEditorView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
@@ -244,7 +250,7 @@ private struct LoadBalancerEditorView: View {
                 } header: {
                     Text("基本")
                 } footer: {
-                    Text(proxied ? String(localized: "代理模式下 DNS TTL 由 Cloudflare 管理。") : String(localized: "非代理（DNS-only）时生效的记录 TTL。"))
+                    Text(proxied ? AppLocalization.string(localized: "代理模式下 DNS TTL 由 Cloudflare 管理。") : AppLocalization.string(localized: "非代理（DNS-only）时生效的记录 TTL。"))
                 }
 
                 Section("流量策略") {

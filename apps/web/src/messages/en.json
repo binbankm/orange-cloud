@@ -30,7 +30,7 @@
 		"title1": "Your Cloudflare,",
 		"title2": "at a glance",
 		"sub": "Domains, DNS, analytics, Workers logs and storage, set in a sky that follows the time of day. Official OAuth sign-in — no API token pasting.",
-		"note": "iOS 17.0+ / Android 9+ · Free download, optional Pro"
+		"note": "iOS 16.0+ / Android 9+ · Free download, optional Pro"
 	},
 	"phone": {
 		"greetMorning": "Good morning, Jiamin",
@@ -121,13 +121,13 @@
 	"cta": {
 		"title": "Put Cloudflare in your pocket",
 		"sub": "Tonight's sky is already waiting in the app.",
-		"requirement": "Requires iOS 17.0+ or Android 9+ · iPhone, iPad & Android"
+		"requirement": "Requires iOS 16.0+ or Android 9+ · iPhone, iPad & Android"
 	},
 	"changelog": {
 		"title": "Release history",
 		"sub": "Orange Cloud is now on the App Store. Here's the release history — or join TestFlight for early access to upcoming builds.",
 		"tfButton": "Join TestFlight",
-		"tfNote": "Requires iOS 17.0 or later · Apple devices only",
+		"tfNote": "Requires iOS 16.0 or later · Apple devices only",
 		"androidSoon": "The Android app is coming soon to Google Play",
 		"statusInReview": "In review"
 	},

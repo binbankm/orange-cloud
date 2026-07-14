@@ -9,16 +9,17 @@
 import SwiftUI
 
 struct TunnelListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(SessionStore.self) private var session
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: TunnelListViewModel
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: TunnelListViewModel
     @State private var showCreate = false
     @State private var showDenied = false
     @State private var tunnelToDelete: Tunnel?
 
     init(session: SessionStore) {
-        _viewModel = State(initialValue: TunnelListViewModel(service: session.tunnelService))
+        _viewModel = StateObject(wrappedValue: TunnelListViewModel(service: session.tunnelService))
     }
 
     private var canWrite: Bool { auth.hasScope("argotunnel.write") }
@@ -26,16 +27,18 @@ struct TunnelListView: View {
     private var accountId: String? { session.selectedAccount?.id }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.tunnels.isEmpty && viewModel.isLoading {
                 SkeletonList(rows: 5)
             } else if viewModel.tunnels.isEmpty {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("没有隧道", systemImage: "arrow.triangle.2.circlepath")
                 } description: {
                     Text(canWrite
-                         ? String(localized: "点右上角 + 新建隧道，或用 cloudflared 创建后在此查看")
-                         : String(localized: "用 cloudflared 创建隧道后会显示在这里"))
+                         ? AppLocalization.string(localized: "点右上角 + 新建隧道，或用 cloudflared 创建后在此查看")
+                         : AppLocalization.string(localized: "用 cloudflared 创建隧道后会显示在这里"))
                 } actions: {
                     if canWrite {
                         Button("新建隧道") { showCreate = true }
@@ -65,7 +68,7 @@ struct TunnelListView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("Cloudflare Tunnel")
+        .ocNavigationTitle("Cloudflare Tunnel")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -128,9 +131,12 @@ struct TunnelListView: View {
 // MARK: - 行
 
 private struct TunnelRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let tunnel: Tunnel
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         HStack(spacing: 12) {
             TintIcon(systemImage: "arrow.triangle.2.circlepath", color: statusColor)
             VStack(alignment: .leading, spacing: 2) {
@@ -168,9 +174,10 @@ private struct TunnelRow: View {
 // MARK: - 详情
 
 struct TunnelDetailView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     @Environment(\.dismiss) private var dismiss
-    @State private var viewModel: TunnelDetailViewModel
+    @StateObject private var viewModel: TunnelDetailViewModel
     @State private var hostnameEdit: HostnameEdit?
     @State private var showDeleteConfirm = false
     @State private var showCleanupConfirm = false
@@ -201,7 +208,7 @@ struct TunnelDetailView: View {
         self.session = session
         self.accountId = accountId
         self.canWrite = canWrite
-        _viewModel = State(initialValue: TunnelDetailViewModel(
+        _viewModel = StateObject(wrappedValue: TunnelDetailViewModel(
             tunnel: tunnel, accountId: accountId, session: session, canWriteDNS: canWriteDNS
         ))
     }
@@ -210,6 +217,8 @@ struct TunnelDetailView: View {
     private var isRemote: Bool { tunnel.remoteConfig == true }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         List {
             infoSection
             if canWrite { connectSection }
@@ -274,8 +283,8 @@ struct TunnelDetailView: View {
             }
             if let remote = tunnel.remoteConfig {
                 LabeledContent("配置方式", value: remote
-                    ? String(localized: "远程（Dashboard）")
-                    : String(localized: "本地（config.yml）"))
+                    ? AppLocalization.string(localized: "远程（Dashboard）")
+                    : AppLocalization.string(localized: "本地（config.yml）"))
             }
             if let created = WorkerScript.parseDate(tunnel.createdAt) {
                 LabeledContent("创建时间") {
@@ -319,8 +328,8 @@ struct TunnelDetailView: View {
                 }
             } else if viewModel.publicHostnames.isEmpty {
                 Text(canWrite
-                     ? String(localized: "还没有公共主机名，点下方添加。")
-                     : String(localized: "还没有公共主机名。"))
+                     ? AppLocalization.string(localized: "还没有公共主机名，点下方添加。")
+                     : AppLocalization.string(localized: "还没有公共主机名。"))
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(Array(viewModel.publicHostnames.enumerated()), id: \.offset) { index, rule in
@@ -374,7 +383,7 @@ struct TunnelDetailView: View {
                     HStack(spacing: 12) {
                         TintIcon(systemImage: "antenna.radiowaves.left.and.right", color: .green, size: 28)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(connection.coloName ?? String(localized: "未知节点"))
+                            Text(connection.coloName ?? AppLocalization.string(localized: "未知节点"))
                                 .font(.callout.weight(.medium))
                             HStack(spacing: 6) {
                                 if let version = connection.clientVersion {
@@ -421,9 +430,12 @@ struct TunnelDetailView: View {
 // MARK: - 公共主机名行
 
 private struct PublicHostnameRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let rule: IngressRule
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         VStack(alignment: .leading, spacing: 3) {
             Text(rule.hostname ?? "—")
                 .font(.callout.weight(.semibold))

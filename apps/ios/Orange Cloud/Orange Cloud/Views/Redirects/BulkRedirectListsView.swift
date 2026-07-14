@@ -8,18 +8,19 @@
 import SwiftUI
 
 struct BulkRedirectListsView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: RedirectListsViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: RedirectListsViewModel
     @State private var searchText = ""
     @State private var showCreate = false
     @State private var listToDelete: RedirectList?
 
     init(session: SessionStore) {
         self.session = session
-        _viewModel = State(initialValue: RedirectListsViewModel(
+        _viewModel = StateObject(wrappedValue: RedirectListsViewModel(
             service: session.bulkRedirectService,
             accountId: session.selectedAccount?.id ?? ""
         ))
@@ -36,16 +37,18 @@ struct BulkRedirectListsView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.isLoading && !viewModel.loaded {
                 SkeletonList(rows: 5, trailing: true)
             } else if viewModel.lists.isEmpty {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("没有重定向列表", systemImage: "arrowshape.turn.up.right")
                 } description: {
                     Text(canWrite
-                         ? String(localized: "批量重定向把大量「源 URL → 目标 URL」放进一个列表统一管理。点右上角 + 创建。")
-                         : String(localized: "此账号暂无 Bulk Redirects 列表。"))
+                         ? AppLocalization.string(localized: "批量重定向把大量「源 URL → 目标 URL」放进一个列表统一管理。点右上角 + 创建。")
+                         : AppLocalization.string(localized: "此账号暂无 Bulk Redirects 列表。"))
                 } actions: {
                     if canWrite {
                         Button("新建列表") { showCreate = true }
@@ -53,7 +56,7 @@ struct BulkRedirectListsView: View {
                     }
                 }
             } else if filtered.isEmpty {
-                ContentUnavailableView.search(text: searchText)
+                OCContentUnavailableView.search(text: searchText)
             } else {
                 List {
                     Section {
@@ -93,7 +96,7 @@ struct BulkRedirectListsView: View {
             }
         }
         .task { await viewModel.load() }
-        .sensoryFeedback(.success, trigger: viewModel.didMutate)
+        .ocSensoryFeedback(.success, trigger: viewModel.didMutate)
         .sheet(isPresented: $showCreate) {
             CreateRedirectListSheet(viewModel: viewModel)
         }
@@ -126,7 +129,7 @@ struct BulkRedirectListsView: View {
                     .font(.callout.weight(.semibold)).lineLimit(1)
                 Text(list.description?.isEmpty == false
                      ? list.description!
-                     : String(localized: "\(list.numItems ?? 0) 条重定向"))
+                     : AppLocalization.string(localized: "\(list.numItems ?? 0) 条重定向"))
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
@@ -138,8 +141,9 @@ struct BulkRedirectListsView: View {
 // MARK: - 新建列表
 
 private struct CreateRedirectListSheet: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    let viewModel: RedirectListsViewModel
+    @ObservedObject var viewModel: RedirectListsViewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
@@ -150,6 +154,8 @@ private struct CreateRedirectListSheet: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
@@ -166,7 +172,7 @@ private struct CreateRedirectListSheet: View {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("新建重定向列表")
+            .ocNavigationTitle("新建重定向列表")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }

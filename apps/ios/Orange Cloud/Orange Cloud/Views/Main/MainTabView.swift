@@ -2,7 +2,7 @@
 //  MainTabView.swift
 //  Orange Cloud
 //
-//  iPhone 底部 Tab，iPad 自动侧边栏（sidebarAdaptable，iOS 18+）；iOS 17 回退经典 TabView。
+//  iPhone 底部 Tab，iPad 自动侧边栏（sidebarAdaptable，iOS 18+）；iOS 16/17 回退经典 TabView。
 //  iOS 26 自动 Liquid Glass TabBar。
 //
 
@@ -10,18 +10,28 @@ import SwiftUI
 
 struct MainTabView: View {
 
-    @Environment(SessionStore.self) private var session
-    @Environment(AuthManager.self) private var auth
-    @State private var selectedTab: AppTab = .dashboard
-    private let router = AppRouter.shared
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var auth: AuthManager
+    @EnvironmentObject private var preferences: AppPreferencesStore
+    @SceneStorage("selectedMainTab") private var selectedTabRaw = AppTab.dashboard.rawValue
+    @ObservedObject private var router = AppRouter.shared
+
+    private var selectedTab: Binding<AppTab> {
+        Binding(
+            get: { AppTab(rawValue: selectedTabRaw) ?? .dashboard },
+            set: { selectedTabRaw = $0.rawValue }
+        )
+    }
 
     var body: some View {
+        let _ = (preferences.themeRaw, preferences.appearanceRaw, preferences.languageRaw)
         tabContainer
+            .background(TabReselectHandler())
             .task {
                 consumePendingRoute()
                 await session.ensureAccounts()
             }
-            .onChange(of: router.pendingModule) {
+            .onChange(of: router.pendingModule) { _ in
                 consumePendingRoute()
             }
     }
@@ -30,41 +40,41 @@ struct MainTabView: View {
     private var tabContainer: some View {
         if #available(iOS 18.0, *) {
             // iOS 18+：值式 Tab + 侧边栏自适应（iPad 自动侧边栏）
-            TabView(selection: $selectedTab) {
-                Tab("概览", systemImage: "square.grid.2x2", value: AppTab.dashboard) {
+            TabView(selection: selectedTab) {
+                Tab(AppLocalization.string(localized: "概览"), systemImage: "square.grid.2x2", value: AppTab.dashboard) {
                     dashboardTab
                 }
-                Tab("域名", systemImage: "globe", value: AppTab.zones) {
+                Tab(AppLocalization.string(localized: "域名"), systemImage: "globe", value: AppTab.zones) {
                     zonesTab
                 }
-                Tab("开发者", systemImage: "chevron.left.forwardslash.chevron.right", value: AppTab.developer) {
+                Tab(AppLocalization.string(localized: "开发者"), systemImage: "chevron.left.forwardslash.chevron.right", value: AppTab.developer) {
                     developerTab
                 }
-                Tab("存储", systemImage: "externaldrive", value: AppTab.storage) {
+                Tab(AppLocalization.string(localized: "存储"), systemImage: "externaldrive", value: AppTab.storage) {
                     storageTab
                 }
-                Tab("设置", systemImage: "gear", value: AppTab.settings) {
+                Tab(AppLocalization.string(localized: "设置"), systemImage: "gear", value: AppTab.settings) {
                     settingsTab
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
         } else {
-            // iOS 17：经典 TabView（底部 Tab；iPad 不走侧边栏自适应）
-            TabView(selection: $selectedTab) {
+            // iOS 16/17：经典 TabView（底部 Tab；iPad 不走侧边栏自适应）
+            TabView(selection: selectedTab) {
                 dashboardTab
-                    .tabItem { Label("概览", systemImage: "square.grid.2x2") }
+                    .tabItem { Label(AppLocalization.string(localized: "概览"), systemImage: "square.grid.2x2") }
                     .tag(AppTab.dashboard)
                 zonesTab
-                    .tabItem { Label("域名", systemImage: "globe") }
+                    .tabItem { Label(AppLocalization.string(localized: "域名"), systemImage: "globe") }
                     .tag(AppTab.zones)
                 developerTab
-                    .tabItem { Label("开发者", systemImage: "chevron.left.forwardslash.chevron.right") }
+                    .tabItem { Label(AppLocalization.string(localized: "开发者"), systemImage: "chevron.left.forwardslash.chevron.right") }
                     .tag(AppTab.developer)
                 storageTab
-                    .tabItem { Label("存储", systemImage: "externaldrive") }
+                    .tabItem { Label(AppLocalization.string(localized: "存储"), systemImage: "externaldrive") }
                     .tag(AppTab.storage)
                 settingsTab
-                    .tabItem { Label("设置", systemImage: "gear") }
+                    .tabItem { Label(AppLocalization.string(localized: "设置"), systemImage: "gear") }
                     .tag(AppTab.settings)
             }
         }
@@ -103,7 +113,7 @@ struct MainTabView: View {
     private func consumePendingRoute() {
         guard let module = router.pendingModule else { return }
         router.pendingModule = nil
-        selectedTab = switch module {
+        selectedTab.wrappedValue = switch module {
         case .dashboard: .dashboard
         case .zones:     .zones
         case .workers:   .developer    // Workers 现归入「开发者」聚合 Tab
@@ -112,7 +122,7 @@ struct MainTabView: View {
         }
     }
 
-    enum AppTab: Hashable {
+    enum AppTab: String, Hashable {
         case dashboard, zones, developer, storage, settings
     }
 }

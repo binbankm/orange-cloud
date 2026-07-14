@@ -8,11 +8,13 @@
 import SwiftUI
 
 struct AccessAppsView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var vm: AccessAppsViewModel?
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var vmStore = OptionalObservableObjectStore()
+    private var vm: AccessAppsViewModel? { vmStore.value(as: AccessAppsViewModel.self) }
     @State private var showCreate = false
     @State private var editTarget: AccessApp?
     @State private var deleteTarget: AccessApp?
@@ -21,6 +23,8 @@ struct AccessAppsView: View {
     private var canWrite: Bool { auth.hasScope("access.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if let vm {
                 content(vm)
@@ -29,7 +33,7 @@ struct AccessAppsView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("Access 应用")
+        .ocNavigationTitle("Access 应用")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if vm != nil {
@@ -56,7 +60,7 @@ struct AccessAppsView: View {
             Text("当前授权未包含 Access 写权限（access.write）。\n请在设置中退出登录后重新授权以启用此功能。")
         }
         .confirmationDialog(
-            deleteTarget.map { String(localized: "删除应用「\($0.name ?? $0.publicHostnames.first ?? "")」？") } ?? "",
+            deleteTarget.map { AppLocalization.string(localized: "删除应用「\($0.name ?? $0.publicHostnames.first ?? "")」？") } ?? "",
             isPresented: Binding(get: { deleteTarget != nil }, set: { if !$0 { deleteTarget = nil } }),
             titleVisibility: .visible
         ) {
@@ -70,7 +74,7 @@ struct AccessAppsView: View {
             await session.ensureAccounts()
             guard vm == nil else { return }
             let model = AccessAppsViewModel(service: session.zeroTrustService, accountId: session.selectedAccount?.id)
-            vm = model
+            vmStore.set(model)
             await model.load()
         }
     }
@@ -80,10 +84,10 @@ struct AccessAppsView: View {
         if vm.isLoading && !vm.loaded {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if vm.apps.isEmpty {
-            ContentUnavailableView {
+            OCContentUnavailableView {
                 Label("没有 Access 应用", systemImage: "lock.shield")
             } description: {
-                Text(vm.error ?? String(localized: "该账号下还没有受 Access 保护的应用。"))
+                Text(vm.error ?? AppLocalization.string(localized: "该账号下还没有受 Access 保护的应用。"))
             } actions: {
                 if canWrite {
                     Button("新建应用") { showCreate = true }
@@ -117,7 +121,7 @@ struct AccessAppsView: View {
             }
             .daybreakList()
             .refreshable { await vm.load() }
-            .sensoryFeedback(.success, trigger: vm.didChange)
+            .ocSensoryFeedback(.success, trigger: vm.didChange)
         }
     }
 

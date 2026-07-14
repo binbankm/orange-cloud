@@ -9,12 +9,13 @@
 import SwiftUI
 
 struct SnippetDetailView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let snippet: Snippet
     let zoneName: String
-    let viewModel: SnippetsViewModel
+    @ObservedObject var viewModel: SnippetsViewModel
 
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     @State private var code: String?
@@ -29,6 +30,8 @@ struct SnippetDetailView: View {
     private var myRules: [SnippetRule] { viewModel.rules(for: snippet.snippetName) }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         List {
             // 代码
             Section {
@@ -132,7 +135,7 @@ struct SnippetDetailView: View {
             titleVisibility: .visible
         ) {
             if let rule = ruleToDelete {
-                Button("删除「\(rule.description ?? String(localized: "未命名规则"))」", role: .destructive) {
+                Button("删除「\(rule.description ?? AppLocalization.string(localized: "未命名规则"))」", role: .destructive) {
                     Task { await viewModel.deleteRule(rule) }
                 }
             }
@@ -178,6 +181,7 @@ struct SnippetDetailView: View {
 // MARK: - 规则行
 
 private struct SnippetRuleRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let rule: SnippetRule
     let canWrite: Bool
@@ -188,10 +192,12 @@ private struct SnippetRuleRow: View {
     private var isEnabled: Bool { rule.enabled ?? true }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(rule.description.map { $0.isEmpty ? String(localized: "未命名规则") : $0 }
-                     ?? String(localized: "未命名规则"))
+                Text(rule.description.map { $0.isEmpty ? AppLocalization.string(localized: "未命名规则") : $0 }
+                     ?? AppLocalization.string(localized: "未命名规则"))
                     .font(.callout.weight(.semibold))
                     .lineLimit(1)
                 Spacer()
@@ -227,8 +233,9 @@ private struct SnippetRuleRow: View {
 // MARK: - 添加规则表单
 
 private struct SnippetRuleFormView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    let viewModel: SnippetsViewModel
+    @ObservedObject var viewModel: SnippetsViewModel
     let snippetName: String
 
     @Environment(\.dismiss) private var dismiss
@@ -242,6 +249,8 @@ private struct SnippetRuleFormView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section("规则") {
@@ -269,7 +278,7 @@ private struct SnippetRuleFormView: View {
                     }
                 }
             }
-            .navigationTitle("添加触发规则")
+            .ocNavigationTitle("添加触发规则")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

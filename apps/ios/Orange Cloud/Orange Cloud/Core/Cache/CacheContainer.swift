@@ -2,94 +2,144 @@
 //  CacheContainer.swift
 //  Orange Cloud
 //
-//  全局共享的 SwiftData 容器：App 主界面与 App Intents 共用同一存储。
+//  iOS 16-compatible cache. Cloudflare data is reproducible from the API, so a
+//  single Codable snapshot is safer and simpler than making the app depend on
+//  SwiftData (which is unavailable before iOS 17).
 //
 
+import Combine
 import Foundation
-import SwiftData
 
-nonisolated enum CacheContainer {
+/// 脱离 `CacheStore` 主 actor 的不可变写盘快照，可安全交给后台任务编码。
+nonisolated private struct CacheSnapshot: Codable, Sendable {
+    var zones: [CachedZone]
+    var dnsRecords: [CachedDNSRecord]
+    var workerScripts: [CachedWorkerScript]
+}
 
-    static let shared: ModelContainer = {
-        let schema = Schema([
-            CachedZone.self,
-            CachedDNSRecord.self,
-            CachedWorkerScript.self,
-        ])
-        // cloudKitDatabase 必须显式 .none：App 带 iCloud entitlement 时 .automatic 会
-        // 强制开启 CloudKit 同步，而 CloudKit 不允许非可选属性和 @Attribute(.unique)。
-        // 缓存数据本就按账号实时拉取，无需跨设备同步。
-        let configuration = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: false,
-            cloudKitDatabase: .none
-        )
-        // 上一轮运行中 fetch 连续抛 ObjC 异常（见 CachePolicy.safeFetch）说明本机缓存库
-        // 大概率已损坏——容器活着时不能动店文件，标记留到此刻（容器创建前）清库重建。
-        if UserDefaults.standard.bool(forKey: rebuildFlagKey) {
-            AppLog.app.error("缓存库带损坏标记，启动前清库重建")
-            destroyStoreFiles(at: configuration.url)
-            UserDefaults.standard.removeObject(forKey: rebuildFlagKey)
-            UserDefaults.standard.removeObject(forKey: fetchExceptionCountKey)
+@MainActor
+final class CacheStore: ObservableObject {
+
+    static let shared = CacheStore()
+
+    @Published private(set) var zones: [CachedZone] = []
+    @Published private(set) var dnsRecords: [CachedDNSRecord] = []
+    @Published private(set) var workerScripts: [CachedWorkerScript] = []
+
+    private let storageKey = "ocCacheSnapshotV2"
+
+    /// 节流写盘：多次连续 persist 调用合并为一次，延迟 500ms 在后台队列执行，
+    /// 避免逐条 upsert/remove 时在主线程频繁做大对象 JSON 编码 + plist 写盘。
+    private var pendingPersistTask: Task<Void, Never>?
+
+    private init() {
+        guard let data = UserDefaults.standard.data(forKey: storageKey),
+              let snapshot = try? JSONDecoder().decode(CacheSnapshot.self, from: data) else { return }
+        zones = snapshot.zones
+        dnsRecords = snapshot.dnsRecords
+        workerScripts = snapshot.workerScripts
+    }
+
+    func zones(for accountId: String) -> [CachedZone] {
+        zones.filter { $0.accountId == accountId }
+    }
+
+    func records(for zoneId: String) -> [CachedDNSRecord] {
+        dnsRecords.filter { $0.zoneId == zoneId }
+    }
+
+    func scripts(for accountId: String) -> [CachedWorkerScript] {
+        workerScripts.filter { $0.accountId == accountId }
+    }
+
+    func replaceZones(_ remoteZones: [Zone], accountId: String) {
+        let oldByID = Dictionary(uniqueKeysWithValues: zones.filter { $0.accountId == accountId }.map { ($0.id, $0) })
+        let refreshed = remoteZones.map { zone -> CachedZone in
+            guard var cached = oldByID[zone.id] else { return CachedZone(from: zone, accountId: accountId) }
+            cached.update(from: zone)
+            return cached
         }
-        do {
-            return try ModelContainer(for: schema, configurations: [configuration])
-        } catch {
-            // 缓存是可随时按账号从 API 重拉的非关键数据，绝不让它的损坏 / 不兼容把 App 在
-            // 启动瞬间崩掉（旧写法在此 fatalError）。先清掉磁盘存储重建；仍失败则退到内存
-            // 容器（本次不落盘），保证一定能启动。
-            AppLog.app.error("ModelContainer 创建失败，尝试清库重建：\(error.localizedDescription)")
-            Self.destroyStoreFiles(at: configuration.url)
-            if let rebuilt = try? ModelContainer(for: schema, configurations: [configuration]) {
-                return rebuilt
+        zones.removeAll { $0.accountId == accountId }
+        zones.append(contentsOf: refreshed)
+        persist()
+    }
+
+    func replaceWorkers(_ remoteScripts: [WorkerScript], accountId: String) {
+        let oldByID = Dictionary(uniqueKeysWithValues: workerScripts.filter { $0.accountId == accountId }.map { ($0.id, $0) })
+        let refreshed = remoteScripts.map { script -> CachedWorkerScript in
+            guard var cached = oldByID[script.id] else { return CachedWorkerScript(from: script, accountId: accountId) }
+            cached.update(from: script)
+            return cached
+        }
+        workerScripts.removeAll { $0.accountId == accountId }
+        workerScripts.append(contentsOf: refreshed)
+        persist()
+    }
+
+    func replaceRecords(_ remoteRecords: [DNSRecord], zoneId: String) {
+        let oldByID = Dictionary(uniqueKeysWithValues: dnsRecords.filter { $0.zoneId == zoneId }.map { ($0.id, $0) })
+        let refreshed = remoteRecords.map { record -> CachedDNSRecord in
+            guard var cached = oldByID[record.id] else { return CachedDNSRecord(from: record, zoneId: zoneId) }
+            cached.update(from: record)
+            return cached
+        }
+        dnsRecords.removeAll { $0.zoneId == zoneId }
+        dnsRecords.append(contentsOf: refreshed)
+        persist()
+    }
+
+    func upsert(zone: Zone, accountId: String) {
+        if let index = zones.firstIndex(where: { $0.id == zone.id }) {
+            zones[index].update(from: zone)
+        } else {
+            zones.append(CachedZone(from: zone, accountId: accountId))
+        }
+        persist()
+    }
+
+    func upsert(record: DNSRecord, zoneId: String) {
+        if let index = dnsRecords.firstIndex(where: { $0.id == record.id }) {
+            dnsRecords[index].update(from: record)
+        } else {
+            dnsRecords.append(CachedDNSRecord(from: record, zoneId: zoneId))
+        }
+        persist()
+    }
+
+    func removeRecord(id: String) {
+        dnsRecords.removeAll { $0.id == id }
+        persist()
+    }
+
+    func setPinned(_ pinned: Bool, zoneId: String) {
+        guard let index = zones.firstIndex(where: { $0.id == zoneId }) else { return }
+        zones[index].pinned = pinned
+        persist()
+    }
+
+    func setDNSRecordCount(_ count: Int, zoneId: String) {
+        guard let index = zones.firstIndex(where: { $0.id == zoneId }) else { return }
+        zones[index].dnsRecordCount = count
+        persist()
+    }
+
+    func warmUp() { _ = zones.count }
+
+    /// 节流写盘：取消上一个未执行的 persist 任务，500ms 后在后台队列序列化并写入。
+    /// 多次连续变更（批量 upsert、逐条删除）最终只触发一次磁盘 IO，避免主线程阻塞。
+    private func persist() {
+        pendingPersistTask?.cancel()
+        let snapshot = CacheSnapshot(zones: zones, dnsRecords: dnsRecords, workerScripts: workerScripts)
+        let key = storageKey
+        pendingPersistTask = Task.detached(priority: .utility) {
+            // 等待 500ms 合并同一批写操作；Task 被取消时直接返回，不写盘
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled else { return }
+            guard let data = try? JSONEncoder().encode(snapshot) else {
+                AppLog.app.error("缓存编码失败，已忽略（下次可从 API 重拉）")
+                return
             }
-            AppLog.app.error("清库后仍失败，回退内存容器（缓存本次不落盘）")
-            let memory = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
-            return try! ModelContainer(for: schema, configurations: [memory])
-        }
-    }()
-
-    /// 启动早期在主线程串行预热一次实体解析。Sentry APPLE-IOS-Y（1.8.2+27~1.8.3+30）：
-    /// iOS 17.x 冷启动后数秒内的首次 fetch 抛「could not locate an NSEntityDescription for
-    /// entity name 'CachedZone'」，疑为首次实体解析的并发竞态（@Query / Intents 查询 /
-    /// ViewModel fetch 同窗口首触）。在任何并发访问前做一次守卫下的空谓词 fetch 灌热实体
-    /// 描述；即便竞态假说不成立，异常也会被 SafeCache 兜住并计入店健康。
-    @MainActor
-    static func warmUp() {
-        _ = SafeCache.fetch(FetchDescriptor<CachedZone>(), context: shared.mainContext)
-    }
-
-    // MARK: - 店健康记录（TF 崩溃点 D8tiH4pqdctLgx_nCLGnZ：单机纯谓词 fetch 也抛 NSException）
-
-    private static let rebuildFlagKey = "ocCacheStoreNeedsRebuild"
-    private static let fetchExceptionCountKey = "ocCacheFetchExceptionCount"
-    /// 连续异常达到该数即标记下次启动清库（缓存可随时从 API 重拉，重建成本 ≈ 一次刷新）
-    private static let rebuildThreshold = 2
-
-    /// fetch 抛 ObjC 异常时调用（CachePolicy.safeFetch）。计数持久化，跨启动累计。
-    static func noteFetchException() {
-        let count = UserDefaults.standard.integer(forKey: fetchExceptionCountKey) + 1
-        UserDefaults.standard.set(count, forKey: fetchExceptionCountKey)
-        if count >= rebuildThreshold {
-            UserDefaults.standard.set(true, forKey: rebuildFlagKey)
-            AppLog.app.error("缓存 fetch 连续 \(count) 次抛 ObjC 异常，已标记下次启动清库重建")
-        }
-    }
-
-    /// fetch 正常完成时调用：清零连续异常计数（偶发异常不触发重建）。
-    static func noteFetchHealthy() {
-        if UserDefaults.standard.integer(forKey: fetchExceptionCountKey) != 0 {
-            UserDefaults.standard.removeObject(forKey: fetchExceptionCountKey)
-        }
-    }
-
-    /// 删除磁盘上的 SwiftData 存储文件（含 -wal / -shm 旁文件），供损坏后清库重建。
-    private static func destroyStoreFiles(at storeURL: URL) {
-        let fm = FileManager.default
-        let dir = storeURL.deletingLastPathComponent()
-        let name = storeURL.lastPathComponent          // 默认为 "default.store"
-        for suffix in ["", "-wal", "-shm"] {
-            try? fm.removeItem(at: dir.appendingPathComponent(name + suffix))
+            UserDefaults.standard.set(data, forKey: key)
         }
     }
 }

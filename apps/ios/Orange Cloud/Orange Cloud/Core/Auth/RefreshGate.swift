@@ -35,10 +35,10 @@ nonisolated enum RefreshGate {
         let fd = open(lockURL.path, O_CREAT | O_RDWR, 0o600)
         guard fd >= 0 else { return nil }
         for _ in 0..<120 {                                   // 120 × 50ms ≈ 6s 上限
-            if lock(fd, type: Int16(F_WRLCK)) { return fd }
-            // 显式检查取消：`try?` 会吞掉 sleep 抛出的 CancellationError，BGAppRefresh
-            // 到期 cancel 后若仍空转抢锁，进程会带着待抢句柄被挂起
+            // 取消优先：BGAppRefreshTask 到期 / 外部 cancel 时立即退出，不再继续抢锁
             if Task.isCancelled { break }
+            if lock(fd, type: Int16(F_WRLCK)) { return fd }
+            // try? 吞掉 CancellationError；下一轮循环开头的 isCancelled 检查保证及时退出
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
         close(fd)                                            // 超时没抢到：关掉句柄，降级

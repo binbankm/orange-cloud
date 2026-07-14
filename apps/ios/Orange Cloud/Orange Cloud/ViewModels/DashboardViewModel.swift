@@ -6,32 +6,30 @@
 //
 
 import Foundation
-import Observation
-import SwiftData
+import Combine
 import WidgetKit
 
-@Observable
 @MainActor
-final class DashboardViewModel {
+final class DashboardViewModel: ObservableObject {
 
-    private(set) var trafficByZone: [String: ZoneTrafficBundle] = [:]
-    private(set) var usage: AccountUsage?
+    @Published private(set) var trafficByZone: [String: ZoneTrafficBundle] = [:]
+    @Published private(set) var usage: AccountUsage?
     /// 资产数（Dashboard 指标格）：接口或权限不可用时保持 nil，格子自动回退
-    private(set) var r2BucketCount: Int?
-    private(set) var d1DatabaseCount: Int?
+    @Published private(set) var r2BucketCount: Int?
+    @Published private(set) var d1DatabaseCount: Int?
     /// 订阅识别结果；nil = 接口不可用（OAuth 无 billing scope 时的常态），回退本地预设
-    private(set) var billing: BillingInfo?
-    var isLoading = false
+    @Published private(set) var billing: BillingInfo?
+    @Published var isLoading = false
 
     /// 全账号 DNS 记录总数（首屏 total_count 汇总；nil = 未加载/无权限，回退已同步缓存计数）
-    private(set) var dnsRecordTotal: Int?
-    private(set) var isLoadingAssets = false
+    @Published private(set) var dnsRecordTotal: Int?
+    @Published private(set) var isLoadingAssets = false
     /// 最近一次资产刷新是否失败（核心即 Zone 列表拉取失败）——驱动 Dashboard 顶部红色提示
-    private(set) var loadFailed = false
+    @Published private(set) var loadFailed = false
     /// 用量加载完成但账号级分析全部失败（区分「仍在加载」与「加载失败」，避免永远卡骨架）
-    private(set) var usageLoadFailed = false
+    @Published private(set) var usageLoadFailed = false
     /// 账户级数据集未授权（免费账号常态）：UI 显示「无账户级数据权限」而非重试，且停发后续账户级查询
-    private(set) var accountAnalyticsUnavailable = false
+    @Published private(set) var accountAnalyticsUnavailable = false
 
     private var loadedZoneIds: Set<String> = []
     private var assetsLoadedForAccount: String?
@@ -45,6 +43,8 @@ final class DashboardViewModel {
     private var assetsTask: Task<Void, Never>?
     private var usageTask: Task<Void, Never>?
     private var trafficTask: Task<Void, Never>?
+    /// DNS 总数只是指标格的补充信息，不应把整个下拉刷新拖到最多 50 个 Zone 的统计完成。
+    private var dnsCountsTask: Task<Void, Never>?
     private let analyticsService: AnalyticsService
     private let accountService: AccountService
     private let r2Service: R2Service
@@ -79,12 +79,11 @@ final class DashboardViewModel {
         accountName: String,
         canReadWorkers: Bool,
         canReadDNS: Bool,
-        context: ModelContext,
         force: Bool = false
     ) async {
         guard force || assetsLoadedForAccount != accountId else { return }
         // 冷启动若持久缓存仍在有效期内，直接用缓存（@Query 已即时渲染），不重新拉网络
-        if !force, assetsLoadedForAccount == nil, CachePolicy.zonesFresh(accountId: accountId, context: context) {
+        if !force, assetsLoadedForAccount == nil, CachePolicy.zonesFresh(accountId: accountId) {
             assetsLoadedForAccount = accountId
             return
         }
@@ -97,7 +96,7 @@ final class DashboardViewModel {
             guard let self else { return }
             await self.performLoadAssets(
                 accountId: accountId, accountName: accountName,
-                canReadWorkers: canReadWorkers, canReadDNS: canReadDNS, context: context
+                canReadWorkers: canReadWorkers, canReadDNS: canReadDNS
             )
         }
         assetsTask = task
@@ -109,8 +108,7 @@ final class DashboardViewModel {
         accountId: String,
         accountName: String,
         canReadWorkers: Bool,
-        canReadDNS: Bool,
-        context: ModelContext
+        canReadDNS: Bool
     ) async {
         isLoadingAssets = true
         loadFailed = false
@@ -121,20 +119,36 @@ final class DashboardViewModel {
             loadFailed = true
             return
         }
-        CacheSync.syncZones(zones, accountId: accountId, accountName: accountName, context: context)
+        CacheSync.syncZones(zones, accountId: accountId, accountName: accountName)
 
         if canReadWorkers, let scripts = try? await workerService.listScripts(accountId: accountId) {
-            CacheSync.syncWorkers(scripts, accountId: accountId, context: context)
+            CacheSync.syncWorkers(scripts, accountId: accountId)
         }
 
+        assetsLoadedForAccount = accountId
+
         if canReadDNS {
-            // 每个 Zone 一个轻量请求并发取 total_count；域名特别多时只统计前 50 个
-            let service = dnsService
-            let zoneIds = zones.prefix(50).map(\.id)
+            // 最多 50 个 Zone 的 DNS total_count 统计会占用较多网络轮次；放到后台补齐，
+            // 让用户看到的下拉刷新及时结束，统计完成后再自动刷新指标格与缓存。
+            startDNSRecordCountLoad(zoneIds: zones.prefix(50).map(\.id))
+        }
+    }
+
+    private func startDNSRecordCountLoad(zoneIds: [String]) {
+        dnsCountsTask?.cancel()
+        let service = dnsService
+        dnsCountsTask = Task { [weak self] in
+            guard let self else { return }
+            guard !zoneIds.isEmpty else {
+                self.dnsRecordTotal = 0
+                self.dnsCountsTask = nil
+                return
+            }
             let counts = await withTaskGroup(of: (String, Int)?.self) { group in
                 for zoneId in zoneIds {
                     group.addTask {
-                        (try? await service.recordCount(zoneId: zoneId)).map { (zoneId, $0) }
+                        guard !Task.isCancelled else { return nil }
+                        return (try? await service.recordCount(zoneId: zoneId)).map { (zoneId, $0) }
                     }
                 }
                 var acc: [(zoneId: String, count: Int)] = []
@@ -143,25 +157,16 @@ final class DashboardViewModel {
                 }
                 return acc
             }
-            if zoneIds.isEmpty {
-                dnsRecordTotal = 0
-            } else if !counts.isEmpty {
-                dnsRecordTotal = counts.reduce(0) { $0 + $1.count }
+            guard !Task.isCancelled else { return }
+            if !counts.isEmpty {
+                self.dnsRecordTotal = counts.reduce(0) { $0 + $1.count }
                 // 分域名回写缓存：域名详情页首屏直显记录数（不再默认 0 条等进列表刷新）
-                SafeCache.perform("dnsRecordCount 回写") {
-                    let rows = try context.fetch(
-                        FetchDescriptor<CachedZone>(predicate: #Predicate { $0.accountId == accountId })
-                    )
-                    let byId = Dictionary(rows.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-                    for (zoneId, count) in counts {
-                        byId[zoneId]?.dnsRecordCount = count
-                    }
-                    try context.save()
+                for (zoneId, count) in counts {
+                    CacheStore.shared.setDNSRecordCount(count, zoneId: zoneId)
                 }
             }
+            self.dnsCountsTask = nil
         }
-
-        assetsLoadedForAccount = accountId
     }
 
     /// 账号用量（Workers/R2）。同一账号只拉一次，下拉刷新强制重拉。
@@ -254,8 +259,20 @@ final class DashboardViewModel {
         )
         var anyData = workers != nil
 
+        // 以下数据集彼此独立。以前按顺序请求，网络稍慢时 8 个请求会把刷新时长累加到十几秒；
+        // 现在同时发起，仍逐项 best-effort 合并，但总耗时约等于其中最慢的请求。
+        let resolvedPeriodStart = periodStart
+        async let r2UsageRequest = analyticsService.r2Usage(accountId: accountId, periodStart: resolvedPeriodStart)
+        async let r2MetricsRequest = r2Service.accountMetrics(accountId: accountId)
+        async let bucketsRequest = r2Service.listBuckets(accountId: accountId)
+        async let cpuRequest = analyticsService.workersCpuTotals(accountId: accountId, periodStart: resolvedPeriodStart)
+        async let d1UsageRequest = analyticsService.d1Usage(accountId: accountId, periodStart: resolvedPeriodStart)
+        async let databasesRequest = d1Service.listDatabases(accountId: accountId)
+        async let kvUsageRequest = analyticsService.kvUsage(accountId: accountId, periodStart: resolvedPeriodStart)
+        async let kvStorageRequest = analyticsService.kvStorageBytes(accountId: accountId)
+
         // R2 用量（操作分类 + 存储）独立合并
-        if let r2 = try? await analyticsService.r2Usage(accountId: accountId, periodStart: periodStart) {
+        if let r2 = try? await r2UsageRequest {
             usage.r2ClassAMonth = r2.classA
             usage.r2ClassBMonth = r2.classB
             usage.r2StorageBytes = r2.storageBytes
@@ -263,36 +280,36 @@ final class DashboardViewModel {
             anyData = true
         }
         // 存储改用 REST 指标（与 Dashboard 同源、免费额度只计 Standard），失败保留 GraphQL 值
-        if let metrics = try? await r2Service.accountMetrics(accountId: accountId) {
+        if let metrics = try? await r2MetricsRequest {
             usage.r2StorageBytes = metrics.standardBytes
             usage.r2ObjectCount = metrics.standardObjects
             anyData = true
         }
         // 存储桶数（指标格用，失败保持 nil；不计入 anyData——它是统计格不是用量）
-        if let buckets = try? await r2Service.listBuckets(accountId: accountId) {
+        if let buckets = try? await bucketsRequest {
             r2BucketCount = buckets.count
         }
         // CPU 总耗时（独立查询，schema 不支持时保持 nil → UI 回退分位展示）
-        if let cpu = try? await analyticsService.workersCpuTotals(accountId: accountId, periodStart: periodStart) {
+        if let cpu = try? await cpuRequest {
             usage.cpuTimeMonthUs = cpu.monthUs
             usage.cpuTimeTodayUs = cpu.todayUs
         }
         // D1 行读/写（独立查询）+ 存储（REST 数据库列表 fileSize 求和，需 d1.read）
-        if let d1 = try? await analyticsService.d1Usage(accountId: accountId, periodStart: periodStart) {
+        if let d1 = try? await d1UsageRequest {
             usage.d1Usage = d1
             anyData = true
         }
-        if let databases = try? await d1Service.listDatabases(accountId: accountId) {
+        if let databases = try? await databasesRequest {
             usage.d1StorageBytes = databases.reduce(0) { $0 + ($1.fileSize ?? 0) }
             d1DatabaseCount = databases.count
             anyData = true
         }
         // KV 读/写 + 存储（独立查询）
-        if let kv = try? await analyticsService.kvUsage(accountId: accountId, periodStart: periodStart) {
+        if let kv = try? await kvUsageRequest {
             usage.kvUsage = kv
             anyData = true
         }
-        if let kvStorage = try? await analyticsService.kvStorageBytes(accountId: accountId) {
+        if let kvStorage = try? await kvStorageRequest {
             usage.kvStorageBytes = kvStorage
             anyData = true
         }

@@ -9,9 +9,10 @@
 import SwiftUI
 
 struct PagesDeploymentDetailView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let deployment: PagesDeployment
-    let viewModel: PagesProjectDetailViewModel
+    @ObservedObject var viewModel: PagesProjectDetailViewModel
 
     @Environment(\.dismiss) private var dismiss
     @State private var pendingAction: DeployAction?
@@ -19,15 +20,17 @@ struct PagesDeploymentDetailView: View {
     private var trigger: PagesTriggerMetadata? { deployment.deploymentTrigger?.metadata }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         List {
             overviewSection
             stagesSection
             actionsSection
         }
         .daybreakList()
-        .navigationTitle(deployment.shortId ?? String(localized: "部署"))
+        .navigationTitle(deployment.shortId ?? AppLocalization.string(localized: "部署"))
         .navigationBarTitleDisplayMode(.inline)
-        .sensoryFeedback(.success, trigger: viewModel.didMutate)
+        .ocSensoryFeedback(.success, trigger: viewModel.didMutate)
         .confirmationDialog(
             pendingAction?.title ?? "",
             isPresented: .init(get: { pendingAction != nil }, set: { if !$0 { pendingAction = nil } }),
@@ -56,7 +59,7 @@ struct PagesDeploymentDetailView: View {
                 Spacer()
                 PagesStatusBadge(status: deployment.status)
             }
-            infoRow("环境", value: deployment.isProduction ? String(localized: "生产") : String(localized: "预览"))
+            infoRow("环境", value: deployment.isProduction ? AppLocalization.string(localized: "生产") : AppLocalization.string(localized: "预览"))
             if let url = deployment.url, let u = URL(string: url) {
                 Link(destination: u) {
                     HStack {
@@ -84,7 +87,7 @@ struct PagesDeploymentDetailView: View {
                 }
             }
             if let date = WorkerScript.parseDate(deployment.createdOn) {
-                infoRow("创建于", value: date.formatted(.dateTime.year().month().day().hour().minute()))
+                infoRow("创建于", value: AppLocalization.dateTime(date, timeStyle: .short))
             }
         } header: {
             Text("部署")
@@ -115,19 +118,19 @@ struct PagesDeploymentDetailView: View {
             Button {
                 pendingAction = .retry
             } label: {
-                actionLabel(String(localized: "重试部署"), icon: "arrow.clockwise", tint: .ocOrange)
+                actionLabel(AppLocalization.string(localized: "重试部署"), icon: "arrow.clockwise", tint: .ocOrange)
             }
             if deployment.isProduction {
                 Button {
                     pendingAction = .rollback
                 } label: {
-                    actionLabel(String(localized: "回滚到此部署"), icon: "arrow.uturn.backward", tint: .blue)
+                    actionLabel(AppLocalization.string(localized: "回滚到此部署"), icon: "arrow.uturn.backward", tint: .blue)
                 }
             }
             Button(role: .destructive) {
                 pendingAction = .delete
             } label: {
-                actionLabel(String(localized: "删除部署"), icon: "trash", tint: .red)
+                actionLabel(AppLocalization.string(localized: "删除部署"), icon: "trash", tint: .red)
             }
         } header: {
             Text("操作")
@@ -159,12 +162,12 @@ struct PagesDeploymentDetailView: View {
 
     private func stageLabel(_ name: String?) -> String {
         switch name {
-        case "queued":     String(localized: "排队")
-        case "initialize": String(localized: "初始化")
-        case "clone_repo": String(localized: "拉取代码")
-        case "build":      String(localized: "构建")
-        case "deploy":     String(localized: "部署")
-        default:           name ?? String(localized: "阶段")
+        case "queued":     AppLocalization.string(localized: "排队")
+        case "initialize": AppLocalization.string(localized: "初始化")
+        case "clone_repo": AppLocalization.string(localized: "拉取代码")
+        case "build":      AppLocalization.string(localized: "构建")
+        case "deploy":     AppLocalization.string(localized: "部署")
+        default:           name ?? AppLocalization.string(localized: "阶段")
         }
     }
 
@@ -184,24 +187,24 @@ struct PagesDeploymentDetailView: View {
 
         var title: String {
             switch self {
-            case .retry:    String(localized: "重试此部署？")
-            case .rollback: String(localized: "回滚到此部署？")
-            case .delete:   String(localized: "删除此部署？")
+            case .retry:    AppLocalization.string(localized: "重试此部署？")
+            case .rollback: AppLocalization.string(localized: "回滚到此部署？")
+            case .delete:   AppLocalization.string(localized: "删除此部署？")
             }
         }
         var confirmLabel: String {
             switch self {
-            case .retry:    String(localized: "重试")
-            case .rollback: String(localized: "回滚")
-            case .delete:   String(localized: "删除")
+            case .retry:    AppLocalization.string(localized: "重试")
+            case .rollback: AppLocalization.string(localized: "回滚")
+            case .delete:   AppLocalization.string(localized: "删除")
             }
         }
         var isDestructive: Bool { self == .delete }
         var message: String {
             switch self {
-            case .retry:    String(localized: "将用相同的源重新构建并部署。")
-            case .rollback: String(localized: "将使此次部署重新成为生产环境的当前版本。")
-            case .delete:   String(localized: "删除后不可恢复；不能删除当前生效的部署。")
+            case .retry:    AppLocalization.string(localized: "将用相同的源重新构建并部署。")
+            case .rollback: AppLocalization.string(localized: "将使此次部署重新成为生产环境的当前版本。")
+            case .delete:   AppLocalization.string(localized: "删除后不可恢复；不能删除当前生效的部署。")
             }
         }
     }

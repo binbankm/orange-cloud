@@ -12,8 +12,8 @@ struct PermissionSelectionView: View {
     /// 添加第二个身份时必须为 true（强制全新登录页，避免复用浏览器 Cookie）
     var freshLogin = false
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel = PermissionSelectionViewModel()
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel = PermissionSelectionViewModel()
     @State private var showScopeDetail = false
 
     var body: some View {
@@ -82,7 +82,7 @@ struct PermissionSelectionView: View {
             .glassRow()
         }
         .daybreakList()
-        .navigationTitle("授权设置")
+        .ocNavigationTitle("授权设置")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             // 底部固定授权按钮
@@ -124,7 +124,7 @@ struct PermissionSelectionView: View {
     /// 快捷预设小按钮（等宽铺满一行）
     private func quickPresetButton(_ title: LocalizedStringKey, systemImage: String, action: @escaping () -> Void) -> some View {
         Button {
-            withAnimation(.smooth) { action() }
+            withAnimation(.ocSmooth) { action() }
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: systemImage).font(.callout)
@@ -206,6 +206,6 @@ struct FeaturePermissionRow: View {
 #Preview {
     NavigationStack {
         PermissionSelectionView()
-            .environment(AuthManager())
+            .environmentObject(AuthManager())
     }
 }

@@ -8,22 +8,21 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class WorkerUploadViewModel {
+final class WorkerUploadViewModel: ObservableObject {
 
     /// 单文件单上限 25 MiB（同 Workers 资源单文件上限）
     static let maxAssetBytes = 25 * 1024 * 1024
 
-    var isUploading = false
-    var error: String?
-    var didUpload = false       // sensoryFeedback 触发器
+    @Published var isUploading = false
+    @Published var error: String?
+    @Published var didUpload = false
 
     // 静态资源上传进度
-    var uploadedAssets = 0
-    var totalAssets = 0
+    @Published var uploadedAssets = 0
+    @Published var totalAssets = 0
 
     private let service: WorkerService
     let accountId: String
@@ -95,7 +94,7 @@ final class WorkerUploadViewModel {
         defer { isUploading = false }
 
         if let big = assets.first(where: { $0.data.count > Self.maxAssetBytes }) {
-            error = String(localized: "文件 \(big.path) 超过 25 MB，超出单文件上限")
+            error = AppLocalization.string(localized: "文件 \(big.path) 超过 25 MB，超出单文件上限")
             return false
         }
 
@@ -118,7 +117,7 @@ final class WorkerUploadViewModel {
 
             if totalAssets > 0 {
                 guard let sessionJWT = session.jwt else {
-                    error = String(localized: "上传会话未返回令牌")
+                    error = AppLocalization.string(localized: "上传会话未返回令牌")
                     return false
                 }
                 for bucket in buckets {
@@ -136,7 +135,7 @@ final class WorkerUploadViewModel {
             }
 
             guard let completionJWT else {
-                error = String(localized: "未获得部署完成令牌")
+                error = AppLocalization.string(localized: "未获得部署完成令牌")
                 return false
             }
             try await service.deployWithAssets(

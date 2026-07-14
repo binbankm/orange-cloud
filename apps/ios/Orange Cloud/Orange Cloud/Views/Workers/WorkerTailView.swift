@@ -6,15 +6,15 @@
 //
 
 import SwiftUI
-import TipKit
 
 struct WorkerTailView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @State private var viewModel: WorkerTailViewModel
+    @StateObject private var viewModel: WorkerTailViewModel
     @Environment(\.scenePhase) private var scenePhase
 
     init(accountId: String, scriptName: String, session: SessionStore) {
-        _viewModel = State(initialValue: WorkerTailViewModel(
+        _viewModel = StateObject(wrappedValue: WorkerTailViewModel(
             service: session.workerTailService,
             accountId: accountId,
             scriptName: scriptName
@@ -22,22 +22,23 @@ struct WorkerTailView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         VStack(spacing: 0) {
             statusBar
             Divider()
             logConsole
         }
-        .navigationTitle("实时日志")
+        .ocNavigationTitle("实时日志")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button(
-                    viewModel.isPaused ? String(localized: "继续") : String(localized: "暂停"),
+                    viewModel.isPaused ? AppLocalization.string(localized: "继续") : AppLocalization.string(localized: "暂停"),
                     systemImage: viewModel.isPaused ? "play.fill" : "pause.fill"
                 ) {
                     viewModel.isPaused.toggle()
                 }
-                .safePopoverTip(TailPauseTip())
                 Button("清屏", systemImage: "xmark.bin") {
                     viewModel.clear()
                 }
@@ -50,7 +51,7 @@ struct WorkerTailView: View {
         .onDisappear {
             Task { await viewModel.stop() }
         }
-        .onChange(of: scenePhase) { _, phase in
+        .onChange(of: scenePhase) { phase in
             // tail 连接进后台必断：置灰 Live Activity，回前台再复活重连
             switch phase {
             case .background: viewModel.enterBackground()
@@ -102,10 +103,10 @@ struct WorkerTailView: View {
 
     private var statusText: String {
         switch viewModel.state {
-        case .idle:                      String(localized: "未连接")
-        case .connecting:                String(localized: "连接中…")
-        case .connected:                 String(localized: "已连接，等待事件")
-        case .disconnected(let reason):  reason ?? String(localized: "连接已断开")
+        case .idle:                      AppLocalization.string(localized: "未连接")
+        case .connecting:                AppLocalization.string(localized: "连接中…")
+        case .connected:                 AppLocalization.string(localized: "已连接，等待事件")
+        case .disconnected(let reason):  reason ?? AppLocalization.string(localized: "连接已断开")
         }
     }
 
@@ -129,7 +130,7 @@ struct WorkerTailView: View {
                 }
             }
             .background { SkyBackground() }
-            .onChange(of: viewModel.lines.count) {
+            .onChange(of: viewModel.lines.count) { _ in
                 guard !viewModel.isPaused, let last = viewModel.lines.last else { return }
                 withAnimation(.easeOut(duration: 0.15)) {
                     proxy.scrollTo(last.id, anchor: .bottom)
@@ -139,7 +140,7 @@ struct WorkerTailView: View {
     }
 
     private var emptyHint: some View {
-        ContentUnavailableView {
+        OCContentUnavailableView {
             Label("等待事件", systemImage: "dot.radiowaves.left.and.right")
         } description: {
             Text("向这个 Worker 发起一次请求，日志会实时出现在这里")
@@ -151,9 +152,12 @@ struct WorkerTailView: View {
 // MARK: - 单条日志行
 
 private struct LogLineRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let line: WorkerTailViewModel.LogLine
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(line.timestamp, format: .dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).second(.twoDigits))
                 .font(.caption2.monospaced())

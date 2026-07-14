@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import Combine
 import AuthenticationServices
 import UIKit
 import WidgetKit
@@ -24,13 +25,13 @@ nonisolated enum AuthError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidCallback:              return String(localized: "授权回调格式错误")
-        case .stateMismatch:                return String(localized: "state 校验失败，请重试")
+        case .invalidCallback:              return AppLocalization.string(localized: "授权回调格式错误")
+        case .stateMismatch:                return AppLocalization.string(localized: "state 校验失败，请重试")
         case .oauthError(let message):      return message
-        case .tokenExchangeFailed(let msg): return String(localized: "换取 Token 失败：\(msg)")
+        case .tokenExchangeFailed(let msg): return AppLocalization.string(localized: "换取 Token 失败：\(msg)")
         case .tokenEndpointError(let status, let body):
-            return String(localized: "换取 Token 失败：\(body.isEmpty ? "HTTP \(status)" : body)")
-        case .notLoggedIn:                  return String(localized: "登录已过期，请重新登录")
+            return AppLocalization.string(localized: "换取 Token 失败：\(body.isEmpty ? "HTTP \(status)" : body)")
+        case .notLoggedIn:                  return AppLocalization.string(localized: "登录已过期，请重新登录")
         }
     }
 }
@@ -42,19 +43,18 @@ nonisolated struct AuthSessionMeta: Codable, Identifiable, Hashable, Sendable {
     var scopes: [String]
 }
 
-@Observable
 @MainActor
-final class AuthManager {
+final class AuthManager: ObservableObject {
 
-    private(set) var sessions: [AuthSessionMeta] = []
-    private(set) var currentSessionId: UUID?
-    var isLoading = false
-    var errorMessage: String?
+    @Published private(set) var sessions: [AuthSessionMeta] = []
+    @Published private(set) var currentSessionId: UUID?
+    @Published var isLoading = false
+    @Published var errorMessage: String?
 
     /// 存储的 token 缺少 refresh token 的身份（token 端点当次未发 refresh_token，
     /// access token 到期后无从续期）。UI 据此把泛化的「刷新失败」升级为「重新授权」引导；
     /// 重新授权拿到带 refresh token 的新令牌后自动摘除。
-    private(set) var sessionsNeedingReauth: Set<UUID> = []
+    @Published private(set) var sessionsNeedingReauth: Set<UUID> = []
 
     var isLoggedIn: Bool { currentSessionId != nil }
 
@@ -137,7 +137,7 @@ final class AuthManager {
         let scopes = UserDefaults.standard.stringArray(forKey: "grantedScopes")
             ?? legacy.scope.components(separatedBy: " ").filter { !$0.isEmpty }.sorted()
         UserDefaults.standard.removeObject(forKey: "grantedScopes")
-        sessions = [AuthSessionMeta(id: id, label: String(localized: "Cloudflare 账号"), scopes: scopes)]
+        sessions = [AuthSessionMeta(id: id, label: AppLocalization.string(localized: "Cloudflare 账号"), scopes: scopes)]
         currentSessionId = id
         persist()
     }
@@ -205,7 +205,7 @@ final class AuthManager {
             let scopes = token.scope.components(separatedBy: " ").filter { !$0.isEmpty }.sorted()
             AppLog.auth.info("login stored session=\(id.uuidString) granted scopes=[\(scopes.joined(separator: " "))]")
             let label = await fetchIdentityLabel(accessToken: token.accessToken)
-                ?? String(localized: "Cloudflare 账号 \(sessions.count + 1)")
+                ?? AppLocalization.string(localized: "Cloudflare 账号 \(sessions.count + 1)")
             sessions.append(AuthSessionMeta(id: id, label: label, scopes: scopes))
             currentSessionId = id
             persist()
@@ -240,7 +240,7 @@ final class AuthManager {
             if let newLabel = await fetchIdentityLabel(accessToken: token.accessToken),
                currentLabel.contains("@"), newLabel.contains("@"), newLabel != currentLabel {
                 AppLog.auth.error("reauthorize identity mismatch expected=\(currentLabel) got=\(newLabel) → aborted")
-                errorMessage = String(localized: "重新授权返回了不同的账号（\(newLabel)），已取消以保护当前账号。请先在系统浏览器退出其它 Cloudflare 账号后重试。")
+                errorMessage = AppLocalization.string(localized: "重新授权返回了不同的账号（\(newLabel)），已取消以保护当前账号。请先在系统浏览器退出其它 Cloudflare 账号后重试。")
                 return
             }
 
@@ -342,7 +342,7 @@ final class AuthManager {
             // invalid_scope = 请求了 OAuth client 未登记的 scope（client 配置变更 / 旧版 App
             // 请求新权限时的高危场景），给明确引导而非裸错误码
             if error == "invalid_scope" {
-                var message = String(localized: "授权请求包含 Cloudflare 尚未对本 App 开放的权限，无法完成登录。请更新到最新版本后重试。")
+                var message = AppLocalization.string(localized: "授权请求包含 Cloudflare 尚未对本 App 开放的权限，无法完成登录。请更新到最新版本后重试。")
                 if !description.isEmpty { message += "\n\(description)" }
                 throw AuthError.oauthError(message)
             }
@@ -515,10 +515,18 @@ final class AuthManager {
             expiresAt:    Date().addingTimeInterval(TimeInterval(response.expiresIn)),
             scope:        response.scope ?? previousScope
         )
-        TokenStore.save(newToken, sessionId: sessionId)
+        let saved = TokenStore.save(newToken, sessionId: sessionId)
         AuthDiagnostics.recordWrite(refreshToken: newToken.refreshToken, sessionId: sessionId)
-        sessionsNeedingReauth.remove(sessionId)   // 能刷新成功即链路健康，摘除陈旧标记
-        AppLog.auth.info("refresh ok session=\(sessionId.uuidString) newRefreshFP=\(AuthDiagnostics.fingerprint(newToken.refreshToken))")
+        if saved {
+            sessionsNeedingReauth.remove(sessionId)   // 能刷新成功且写盘成功即链路健康，摘除陈旧标记
+            AppLog.auth.info("refresh ok session=\(sessionId.uuidString) newRefreshFP=\(AuthDiagnostics.fingerprint(newToken.refreshToken))")
+        } else {
+            // Keychain 写入失败：旧 token 已被 SecItemDelete 删除，新 token 未落盘。
+            // 下次读取必然是「token missing」，立刻标记「需重新授权」让 UI 出引导横幅，
+            // 而非等到下次 API 请求失败后才被动发现。
+            sessionsNeedingReauth.insert(sessionId)
+            AppLog.auth.error("refresh ok but keychain write FAILED → marking session as needing reauth. session=\(sessionId.uuidString)")
+        }
         return newToken.accessToken
     }
 
@@ -530,7 +538,7 @@ final class AuthManager {
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
-            throw AuthError.tokenExchangeFailed(String(localized: "无效响应"))
+            throw AuthError.tokenExchangeFailed(AppLocalization.string(localized: "无效响应"))
         }
         guard (200...299).contains(http.statusCode) else {
             let body = String(data: data, encoding: .utf8) ?? ""
@@ -539,7 +547,7 @@ final class AuthManager {
         do {
             return try JSONDecoder().decode(TokenResponse.self, from: data)
         } catch {
-            throw AuthError.tokenExchangeFailed(String(localized: "响应解析失败"))
+            throw AuthError.tokenExchangeFailed(AppLocalization.string(localized: "响应解析失败"))
         }
     }
 
@@ -611,10 +619,12 @@ private final class WebAuthContextProvider: NSObject, ASWebAuthenticationPresent
         if let keyWindow = scenes.flatMap(\.windows).first(where: \.isKeyWindow) {
             return keyWindow
         }
-        // 登录界面可见时必然有前台 scene
-        guard let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first else {
-            preconditionFailure("发起 OAuth 时找不到可用的 UIWindowScene")
+        if let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first {
+            return UIWindow(windowScene: scene)
         }
-        return UIWindow(windowScene: scene)
+        // 生命周期切换期间可能暂时没有已连接的 scene。认证失败应由
+        // ASWebAuthenticationSession 正常回调，而不应把这个可恢复状态升级为进程崩溃。
+        AppLog.auth.error("OAuth presentation requested without an available UIWindowScene")
+        return UIWindow()
     }
 }

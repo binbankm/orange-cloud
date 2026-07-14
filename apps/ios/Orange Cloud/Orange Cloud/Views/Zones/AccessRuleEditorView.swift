@@ -11,7 +11,7 @@ import SwiftUI
 struct AccessRuleEditorView: View {
 
     let existing: FirewallAccessRule?
-    let viewModel: ZoneAccessRulesViewModel
+    @ObservedObject var viewModel: ZoneAccessRulesViewModel
 
     @Environment(\.dismiss) private var dismiss
 

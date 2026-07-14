@@ -6,18 +6,17 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class CacheRulesViewModel {
+final class CacheRulesViewModel: ObservableObject {
 
-    private(set) var ruleset: CacheRuleset?
-    private(set) var loaded = false        // 区分「未加载」与「加载过但没有规则」
-    var isLoading = false
-    var isSaving = false
-    var togglingRuleId: String?
-    var error: String?
+    @Published private(set) var ruleset: CacheRuleset?
+    @Published private(set) var loaded = false
+    @Published var isLoading = false
+    @Published var isSaving = false
+    @Published var togglingRuleId: String?
+    @Published var error: String?
 
     var rules: [CacheRule] { ruleset?.rules ?? [] }
 

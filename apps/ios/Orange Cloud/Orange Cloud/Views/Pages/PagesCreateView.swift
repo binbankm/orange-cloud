@@ -12,7 +12,7 @@ import SwiftUI
 
 struct PagesCreateView: View {
 
-    let viewModel: PagesProjectListViewModel
+    @ObservedObject var viewModel: PagesProjectListViewModel
     let accountId: String
 
     @Environment(\.dismiss) private var dismiss
@@ -73,7 +73,7 @@ struct PagesCreateView: View {
                     }
                 }
             }
-            .navigationTitle("创建项目")
+            .ocNavigationTitle("创建项目")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

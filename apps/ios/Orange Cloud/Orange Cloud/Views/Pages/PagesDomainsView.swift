@@ -10,8 +10,8 @@ import SwiftUI
 
 struct PagesDomainsView: View {
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: PagesDomainsViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: PagesDomainsViewModel
     @State private var showAdd = false
     @State private var newDomain = ""
     @State private var detailTarget: PagesDomain?
@@ -19,7 +19,7 @@ struct PagesDomainsView: View {
     @State private var writeDenied = false
 
     init(project: PagesProject, session: SessionStore) {
-        _viewModel = State(initialValue: PagesDomainsViewModel(
+        _viewModel = StateObject(wrappedValue: PagesDomainsViewModel(
             service: session.pagesService,
             dnsService: session.dnsService,
             accountId: session.selectedAccount?.id ?? "",
@@ -43,7 +43,7 @@ struct PagesDomainsView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("自定义域名")
+        .ocNavigationTitle("自定义域名")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -76,7 +76,7 @@ struct PagesDomainsView: View {
         } message: {
             Text("将从该 Pages 项目移除此域名，不影响已有 DNS 记录。")
         }
-        .sensoryFeedback(.success, trigger: viewModel.didMutate)
+        .ocSensoryFeedback(.success, trigger: viewModel.didMutate)
         .alert("权限不足", isPresented: $writeDenied) {
             Button("好", role: .cancel) {}
         } message: {
@@ -122,7 +122,7 @@ struct PagesDomainsView: View {
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
+        OCContentUnavailableView {
             Label("没有自定义域名", systemImage: "globe")
         } description: {
             Text("绑定你自己的域名，并在此完成解析与验证。")
@@ -192,7 +192,7 @@ struct PagesDomainsView: View {
 private struct PagesDomainDetailSheet: View {
 
     let domain: PagesDomain
-    let viewModel: PagesDomainsViewModel
+    @ObservedObject var viewModel: PagesDomainsViewModel
     let canWrite: Bool
     let canReadDNS: Bool
     let canWriteDNS: Bool

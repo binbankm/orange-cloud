@@ -7,22 +7,21 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
 // MARK: - Rulesets phase 泛化
 
-@Observable
 @MainActor
-final class ZonePhaseRulesViewModel {
+final class ZonePhaseRulesViewModel: ObservableObject {
 
-    private(set) var ruleset: ZoneRuleset?
-    private(set) var rules: [ZoneRule] = []
-    var isLoading = false
-    var loaded = false
-    var isMutating = false
-    var isSaving = false
-    var error: String?
-    var didMutate = false
+    @Published private(set) var ruleset: ZoneRuleset?
+    @Published private(set) var rules: [ZoneRule] = []
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var isMutating = false
+    @Published var isSaving = false
+    @Published var error: String?
+    @Published var didMutate = false
 
     private let service: ZoneRulesetService
     private let zoneId: String
@@ -109,16 +108,15 @@ final class ZonePhaseRulesViewModel {
 
 // MARK: - Page Rules（传统）
 
-@Observable
 @MainActor
-final class PageRulesViewModel {
+final class PageRulesViewModel: ObservableObject {
 
-    private(set) var rules: [PageRule] = []
-    var isLoading = false
-    var loaded = false
-    var isMutating = false
-    var error: String?
-    var didMutate = false
+    @Published private(set) var rules: [PageRule] = []
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var isMutating = false
+    @Published var error: String?
+    @Published var didMutate = false
 
     private let service: ZoneRulesetService
     private let zoneId: String
@@ -175,15 +173,14 @@ final class PageRulesViewModel {
 
 // MARK: - URL Normalization
 
-@Observable
 @MainActor
-final class URLNormalizationViewModel {
+final class URLNormalizationViewModel: ObservableObject {
 
-    var value: URLNormalization?
-    var isLoading = false
-    var isMutating = false
-    var error: String?
-    var didMutate = false
+    @Published var value: URLNormalization?
+    @Published var isLoading = false
+    @Published var isMutating = false
+    @Published var error: String?
+    @Published var didMutate = false
 
     private let service: ZoneRulesetService
     private let zoneId: String

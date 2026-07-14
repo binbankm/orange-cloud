@@ -10,11 +10,13 @@
 import SwiftUI
 
 struct HyperdriveView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var vm: HyperdriveViewModel?
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var vmStore = OptionalObservableObjectStore()
+    private var vm: HyperdriveViewModel? { vmStore.value(as: HyperdriveViewModel.self) }
     @State private var showCreate = false
     @State private var detailTarget: HyperdriveConfig?
     @State private var deleteTarget: HyperdriveConfig?
@@ -23,16 +25,18 @@ struct HyperdriveView: View {
     private var canWrite: Bool { auth.hasScope("query-cache.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if let vm { content(vm) } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
         }
         .background { SkyBackground() }
-        .navigationTitle("Hyperdrive")
+        .ocNavigationTitle("Hyperdrive")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if vm != nil {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("新建配置", systemImage: "plus") {
+                    Button(AppLocalization.string(localized: "新建配置"), systemImage: "plus") {
                         if canWrite { showCreate = true } else { writeDenied = true }
                     }
                 }
@@ -44,27 +48,27 @@ struct HyperdriveView: View {
         .sheet(item: $detailTarget) { config in
             if let vm { HyperdriveDetailSheet(viewModel: vm, configId: config.id) }
         }
-        .alert("权限不足", isPresented: $writeDenied) {
-            Button("好", role: .cancel) {}
+        .alert(AppLocalization.string(localized: "权限不足"), isPresented: $writeDenied) {
+            Button(AppLocalization.string(localized: "好"), role: .cancel) {}
         } message: {
-            Text("当前授权未包含 Hyperdrive 写权限（query-cache.write）。\n请在设置中退出登录后重新授权以启用此功能。")
+            Text.ocLocalized("当前授权未包含 Hyperdrive 写权限（query-cache.write）。\n请在设置中退出登录后重新授权以启用此功能。")
         }
         .confirmationDialog(
-            deleteTarget.map { String(localized: "删除配置「\($0.displayName)」？") } ?? "",
+            deleteTarget.map { AppLocalization.string(localized: "删除配置「\($0.displayName)」？") } ?? "",
             isPresented: Binding(get: { deleteTarget != nil }, set: { if !$0 { deleteTarget = nil } }),
             titleVisibility: .visible
         ) {
-            Button("删除", role: .destructive) {
+            Button(AppLocalization.string(localized: "删除"), role: .destructive) {
                 if let c = deleteTarget, let vm { Task { await vm.delete(c) } }
             }
         } message: {
-            Text("删除后引用该配置的 Worker 将无法连接，不可撤销。")
+            Text.ocLocalized("删除后引用该配置的 Worker 将无法连接，不可撤销。")
         }
         .task {
             await session.ensureAccounts()
             guard vm == nil else { return }
             let model = HyperdriveViewModel(service: session.hyperdriveService, accountId: session.selectedAccount?.id)
-            vm = model
+            vmStore.set(model)
             await model.load()
         }
     }
@@ -74,13 +78,13 @@ struct HyperdriveView: View {
         if vm.isLoading && !vm.loaded {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if vm.configs.isEmpty {
-            ContentUnavailableView {
-                Label("没有 Hyperdrive 配置", systemImage: "bolt.horizontal.circle")
+            OCContentUnavailableView {
+                Label(AppLocalization.string(localized: "没有 Hyperdrive 配置"), systemImage: "bolt.horizontal.circle")
             } description: {
-                Text(vm.error ?? String(localized: "该账号下还没有 Hyperdrive 配置。"))
+                Text(vm.error ?? AppLocalization.string(localized: "该账号下还没有 Hyperdrive 配置。"))
             } actions: {
                 if canWrite {
-                    Button("新建配置") { showCreate = true }
+                    Button(AppLocalization.string(localized: "新建配置")) { showCreate = true }
                         .buttonStyle(.borderedProminent).tint(Color.ocOrangePressed).fontWeight(.bold)
                 }
             }
@@ -108,19 +112,19 @@ struct HyperdriveView: View {
                         .swipeActions(edge: .trailing) {
                             if canWrite {
                                 Button(role: .destructive) { deleteTarget = config } label: {
-                                    Label("删除", systemImage: "trash")
+                                    Label(AppLocalization.string(localized: "删除"), systemImage: "trash")
                                 }
                             }
                         }
                     }
                 } footer: {
-                    Text("点按查看详情与管理 · Hyperdrive 为外部 Postgres / MySQL 提供连接池与查询缓存。")
+                    Text.ocLocalized("点按查看详情与管理 · Hyperdrive 为外部 Postgres / MySQL 提供连接池与查询缓存。")
                 }
                 .glassRow()
             }
             .daybreakList()
             .refreshable { await vm.load() }
-            .sensoryFeedback(.success, trigger: vm.didChange)
+            .ocSensoryFeedback(.success, trigger: vm.didChange)
         }
     }
 }
@@ -128,11 +132,12 @@ struct HyperdriveView: View {
 // MARK: - 详情管理 sheet
 
 private struct HyperdriveDetailSheet: View {
-    let viewModel: HyperdriveViewModel
+    @EnvironmentObject private var preferences: AppPreferencesStore
+    @ObservedObject var viewModel: HyperdriveViewModel
     let configId: String
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
     @State private var showRename = false
     @State private var showCaching = false
     @State private var showConnection = false
@@ -143,23 +148,25 @@ private struct HyperdriveDetailSheet: View {
     private var cachingEnabled: Bool { !(config?.caching?.disabled ?? false) }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Group {
                 if let config { detail(config) } else { ProgressView() }
             }
             .background { SkyBackground() }
-            .navigationTitle(config?.displayName ?? String(localized: "配置"))
+            .navigationTitle(config?.displayName ?? AppLocalization.string(localized: "配置"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(AppLocalization.string(localized: "完成")) { dismiss() } }
                 if canWrite {
                     ToolbarItem(placement: .topBarLeading) {
                         Menu {
-                            Button("重命名", systemImage: "pencil") { showRename = true }
-                            Button("编辑缓存", systemImage: "bolt.horizontal") { showCaching = true }
-                            Button("编辑连接", systemImage: "server.rack") { showConnection = true }
+                            Button(AppLocalization.string(localized: "重命名"), systemImage: "pencil") { showRename = true }
+                            Button(AppLocalization.string(localized: "编辑缓存"), systemImage: "bolt.horizontal") { showCaching = true }
+                            Button(AppLocalization.string(localized: "编辑连接"), systemImage: "server.rack") { showConnection = true }
                             Divider()
-                            Button("删除配置", systemImage: "trash", role: .destructive) { showDelete = true }
+                            Button(AppLocalization.string(localized: "删除配置"), systemImage: "trash", role: .destructive) { showDelete = true }
                         } label: {
                             Image(systemName: "ellipsis.circle")
                         }
@@ -176,16 +183,16 @@ private struct HyperdriveDetailSheet: View {
                 if let config { HyperdriveConnectionSheet(viewModel: viewModel, configId: configId, origin: config.origin) }
             }
             .confirmationDialog(
-                config.map { String(localized: "删除配置「\($0.displayName)」？") } ?? "",
+                config.map { AppLocalization.string(localized: "删除配置「\($0.displayName)」？") } ?? "",
                 isPresented: $showDelete, titleVisibility: .visible
             ) {
-                Button("删除", role: .destructive) {
+                Button(AppLocalization.string(localized: "删除"), role: .destructive) {
                     if let config { Task { await viewModel.delete(config); dismiss() } }
                 }
             } message: {
-                Text("删除后引用该配置的 Worker 将无法连接，不可撤销。")
+                Text.ocLocalized("删除后引用该配置的 Worker 将无法连接，不可撤销。")
             }
-            .onChange(of: viewModel.configs.contains { $0.id == configId }) { _, stillThere in
+            .onChange(of: viewModel.configs.contains { $0.id == configId }) { stillThere in
                 if !stillThere { dismiss() }
             }
         }
@@ -194,35 +201,35 @@ private struct HyperdriveDetailSheet: View {
     @ViewBuilder
     private func detail(_ config: HyperdriveConfig) -> some View {
         List {
-            Section("源数据库") {
+            Section(AppLocalization.string(localized: "源数据库")) {
                 if let origin = config.origin {
-                    if let scheme = origin.scheme { LabeledContent("类型", value: scheme.uppercased()) }
-                    if let host = origin.host { LabeledContent("主机", value: host) }
-                    if let port = origin.port { LabeledContent("端口", value: String(port)) }
-                    if let db = origin.database { LabeledContent("数据库", value: db) }
-                    if let user = origin.user { LabeledContent("用户名", value: user) }
+                    if let scheme = origin.scheme { LabeledContent(AppLocalization.string(localized: "类型"), value: scheme.uppercased()) }
+                    if let host = origin.host { LabeledContent(AppLocalization.string(localized: "主机"), value: host) }
+                    if let port = origin.port { LabeledContent(AppLocalization.string(localized: "端口"), value: String(port)) }
+                    if let db = origin.database { LabeledContent(AppLocalization.string(localized: "数据库"), value: db) }
+                    if let user = origin.user { LabeledContent(AppLocalization.string(localized: "用户名"), value: user) }
                 } else {
-                    Text("无连接信息").foregroundStyle(.secondary).font(.callout)
+                    Text.ocLocalized("无连接信息").foregroundStyle(.secondary).font(.callout)
                 }
             }
             .glassRow()
 
             Section {
-                LabeledContent("查询缓存") {
+                LabeledContent(AppLocalization.string(localized: "查询缓存")) {
                     Text(cachingEnabled ? "已启用" : "已禁用")
                         .foregroundStyle(cachingEnabled ? .secondary : Color.ocOrangeText)
                 }
                 if cachingEnabled {
-                    LabeledContent("最大缓存时长", value: "\(config.caching?.maxAge ?? 60) 秒")
-                    LabeledContent("陈旧重验证", value: "\(config.caching?.staleWhileRevalidate ?? 15) 秒")
+                    LabeledContent(AppLocalization.string(localized: "最大缓存时长"), value: "\(config.caching?.maxAge ?? 60) 秒")
+                    LabeledContent(AppLocalization.string(localized: "陈旧重验证"), value: "\(config.caching?.staleWhileRevalidate ?? 15) 秒")
                 }
                 if let limit = config.originConnectionLimit {
-                    LabeledContent("连接上限", value: String(limit))
+                    LabeledContent(AppLocalization.string(localized: "连接上限"), value: String(limit))
                 }
             } header: {
-                Text("缓存")
+                Text.ocLocalized("缓存")
             } footer: {
-                Text("Hyperdrive 缓存数据库的只读查询结果以降低延迟。")
+                Text.ocLocalized("Hyperdrive 缓存数据库的只读查询结果以降低延迟。")
             }
             .glassRow()
 
@@ -237,7 +244,8 @@ private struct HyperdriveDetailSheet: View {
 // MARK: - 重命名
 
 private struct HyperdriveRenameSheet: View {
-    let viewModel: HyperdriveViewModel
+    @EnvironmentObject private var preferences: AppPreferencesStore
+    @ObservedObject var viewModel: HyperdriveViewModel
     let configId: String
     let currentName: String
 
@@ -245,7 +253,7 @@ private struct HyperdriveRenameSheet: View {
     @State private var name: String
 
     init(viewModel: HyperdriveViewModel, configId: String, currentName: String) {
-        self.viewModel = viewModel
+        _viewModel = ObservedObject(wrappedValue: viewModel)
         self.configId = configId
         self.currentName = currentName
         _name = State(initialValue: currentName)
@@ -255,25 +263,27 @@ private struct HyperdriveRenameSheet: View {
     private var canSave: Bool { !trimmed.isEmpty && trimmed != currentName && !viewModel.isSaving }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
-                    TextField("名称", text: $name)
+                    TextField(AppLocalization.string(localized: "名称"), text: $name)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                 }
                 if let error = viewModel.error {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("重命名配置")
+            .ocNavigationTitle("重命名配置")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(AppLocalization.string(localized: "取消")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         Task { if await viewModel.update(configId: configId, patch: HyperdrivePatch(name: trimmed)) { dismiss() } }
                     } label: {
-                        if viewModel.isSaving { ProgressView() } else { Text("保存").fontWeight(.semibold) }
+                        if viewModel.isSaving { ProgressView() } else { Text.ocLocalized("保存").fontWeight(.semibold) }
                     }
                     .disabled(!canSave)
                 }
@@ -287,7 +297,8 @@ private struct HyperdriveRenameSheet: View {
 // MARK: - 编辑缓存
 
 private struct HyperdriveCachingSheet: View {
-    let viewModel: HyperdriveViewModel
+    @EnvironmentObject private var preferences: AppPreferencesStore
+    @ObservedObject var viewModel: HyperdriveViewModel
     let configId: String
 
     @Environment(\.dismiss) private var dismiss
@@ -296,7 +307,7 @@ private struct HyperdriveCachingSheet: View {
     @State private var swrText: String
 
     init(viewModel: HyperdriveViewModel, configId: String, caching: HyperdriveCaching?) {
-        self.viewModel = viewModel
+        _viewModel = ObservedObject(wrappedValue: viewModel)
         self.configId = configId
         _enabled = State(initialValue: !(caching?.disabled ?? false))
         _maxAgeText = State(initialValue: caching?.maxAge.map(String.init) ?? "60")
@@ -312,33 +323,35 @@ private struct HyperdriveCachingSheet: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
-                    Toggle("启用查询缓存", isOn: $enabled)
+                    Toggle(AppLocalization.string(localized: "启用查询缓存"), isOn: $enabled)
                 } footer: {
-                    Text("关闭后所有查询都直连源数据库，不缓存结果。")
+                    Text.ocLocalized("关闭后所有查询都直连源数据库，不缓存结果。")
                 }
                 if enabled {
                     Section {
-                        TextField("最大缓存时长（秒）", text: $maxAgeText).keyboardType(.numberPad)
+                        TextField(AppLocalization.string(localized: "最大缓存时长（秒）"), text: $maxAgeText).keyboardType(.numberPad)
                     } footer: {
-                        Text("缓存结果保留多久，默认 60 秒。")
+                        Text.ocLocalized("缓存结果保留多久，默认 60 秒。")
                     }
                     Section {
-                        TextField("陈旧重验证（秒）", text: $swrText).keyboardType(.numberPad)
+                        TextField(AppLocalization.string(localized: "陈旧重验证（秒）"), text: $swrText).keyboardType(.numberPad)
                     } footer: {
-                        Text("缓存过期后仍可返回旧结果的秒数，默认 15 秒。")
+                        Text.ocLocalized("缓存过期后仍可返回旧结果的秒数，默认 15 秒。")
                     }
                 }
                 if let error = viewModel.error {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("编辑缓存")
+            .ocNavigationTitle("编辑缓存")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(AppLocalization.string(localized: "取消")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         let patch: HyperdrivePatch = enabled
@@ -346,7 +359,7 @@ private struct HyperdriveCachingSheet: View {
                             : HyperdrivePatch(caching: HyperdriveCachingPatch(disabled: true))
                         Task { if await viewModel.update(configId: configId, patch: patch) { dismiss() } }
                     } label: {
-                        if viewModel.isSaving { ProgressView() } else { Text("保存").fontWeight(.semibold) }
+                        if viewModel.isSaving { ProgressView() } else { Text.ocLocalized("保存").fontWeight(.semibold) }
                     }
                     .disabled(!canSave)
                 }
@@ -360,7 +373,8 @@ private struct HyperdriveCachingSheet: View {
 // MARK: - 编辑源连接（需重新输入密码）
 
 private struct HyperdriveConnectionSheet: View {
-    let viewModel: HyperdriveViewModel
+    @EnvironmentObject private var preferences: AppPreferencesStore
+    @ObservedObject var viewModel: HyperdriveViewModel
     let configId: String
 
     @Environment(\.dismiss) private var dismiss
@@ -372,7 +386,7 @@ private struct HyperdriveConnectionSheet: View {
     @State private var password = ""
 
     init(viewModel: HyperdriveViewModel, configId: String, origin: HyperdriveOrigin?) {
-        self.viewModel = viewModel
+        _viewModel = ObservedObject(wrappedValue: viewModel)
         self.configId = configId
         _scheme = State(initialValue: origin?.scheme == "mysql" ? .mysql : .postgres)
         _host = State(initialValue: origin?.host ?? "")
@@ -391,36 +405,38 @@ private struct HyperdriveConnectionSheet: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
-                Section("源数据库连接") {
-                    Picker("数据库类型", selection: $scheme) {
+                Section(AppLocalization.string(localized: "源数据库连接")) {
+                    Picker(AppLocalization.string(localized: "数据库类型"), selection: $scheme) {
                         ForEach(HyperdriveScheme.allCases) { Text($0.label).tag($0) }
                     }
-                    .onChange(of: scheme) { _, new in
+                    .onChange(of: scheme) { new in
                         if portText == "5432" || portText == "3306" { portText = String(new.defaultPort) }
                     }
-                    TextField("主机", text: $host)
+                    TextField(AppLocalization.string(localized: "主机"), text: $host)
                         .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
-                    TextField("端口", text: $portText).keyboardType(.numberPad)
-                    TextField("数据库名", text: $database)
+                    TextField(AppLocalization.string(localized: "端口"), text: $portText).keyboardType(.numberPad)
+                    TextField(AppLocalization.string(localized: "数据库名"), text: $database)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    TextField("用户名", text: $user)
+                    TextField(AppLocalization.string(localized: "用户名"), text: $user)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    SecureField("密码", text: $password)
+                    SecureField(AppLocalization.string(localized: "密码"), text: $password)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                 }
                 Section {} footer: {
-                    Text("出于安全，Cloudflare 不回显原密码，更新连接需重新输入密码。")
+                    Text.ocLocalized("出于安全，Cloudflare 不回显原密码，更新连接需重新输入密码。")
                 }
                 if let error = viewModel.error {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("编辑连接")
+            .ocNavigationTitle("编辑连接")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(AppLocalization.string(localized: "取消")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         let origin = HyperdriveCreate.Origin(
@@ -433,7 +449,7 @@ private struct HyperdriveConnectionSheet: View {
                         )
                         Task { if await viewModel.update(configId: configId, patch: HyperdrivePatch(origin: origin)) { dismiss() } }
                     } label: {
-                        if viewModel.isSaving { ProgressView() } else { Text("保存").fontWeight(.semibold) }
+                        if viewModel.isSaving { ProgressView() } else { Text.ocLocalized("保存").fontWeight(.semibold) }
                     }
                     .disabled(!canSave)
                 }
@@ -447,7 +463,8 @@ private struct HyperdriveConnectionSheet: View {
 // MARK: - 新建
 
 private struct HyperdriveCreateView: View {
-    let viewModel: HyperdriveViewModel
+    @EnvironmentObject private var preferences: AppPreferencesStore
+    @ObservedObject var viewModel: HyperdriveViewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
@@ -470,43 +487,45 @@ private struct HyperdriveCreateView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
-                Section("配置") {
-                    TextField("名称", text: $name)
+                Section(AppLocalization.string(localized: "配置")) {
+                    TextField(AppLocalization.string(localized: "名称"), text: $name)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    Picker("数据库类型", selection: $scheme) {
+                    Picker(AppLocalization.string(localized: "数据库类型"), selection: $scheme) {
                         ForEach(HyperdriveScheme.allCases) { Text($0.label).tag($0) }
                     }
-                    .onChange(of: scheme) { _, new in portText = String(new.defaultPort) }
+                    .onChange(of: scheme) { new in portText = String(new.defaultPort) }
                 }
-                Section("源数据库连接") {
-                    TextField("主机", text: $host)
+                Section(AppLocalization.string(localized: "源数据库连接")) {
+                    TextField(AppLocalization.string(localized: "主机"), text: $host)
                         .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
-                    TextField("端口", text: $portText).keyboardType(.numberPad)
-                    TextField("数据库名", text: $database)
+                    TextField(AppLocalization.string(localized: "端口"), text: $portText).keyboardType(.numberPad)
+                    TextField(AppLocalization.string(localized: "数据库名"), text: $database)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    TextField("用户名", text: $user)
+                    TextField(AppLocalization.string(localized: "用户名"), text: $user)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    SecureField("密码", text: $password)
+                    SecureField(AppLocalization.string(localized: "密码"), text: $password)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                 }
                 Section {} footer: {
-                    Text("密码只用于建立连接，Cloudflare 不会再回显。请确保该数据库允许 Cloudflare 出口 IP 访问。")
+                    Text.ocLocalized("密码只用于建立连接，Cloudflare 不会再回显。请确保该数据库允许 Cloudflare 出口 IP 访问。")
                 }
                 if let error = viewModel.error {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("新建 Hyperdrive")
+            .ocNavigationTitle("新建 Hyperdrive")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(AppLocalization.string(localized: "取消")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         Task { await save() }
                     } label: {
-                        if viewModel.isSaving { ProgressView() } else { Text("创建").fontWeight(.semibold) }
+                        if viewModel.isSaving { ProgressView() } else { Text.ocLocalized("创建").fontWeight(.semibold) }
                     }
                     .disabled(!canSave)
                 }

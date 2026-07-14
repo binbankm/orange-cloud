@@ -11,18 +11,20 @@ import SwiftUI
 import StoreKit
 
 struct PaywallView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     /// 触发场景；nil = 从设置页常驻入口打开
     var feature: ProFeature? = nil
 
-    @Environment(EntitlementStore.self) private var entitlements
+    @EnvironmentObject private var entitlements: EntitlementStore
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.purchase) private var purchase
 
     @State private var selectedID = EntitlementStore.ProductID.yearly
     @State private var isPurchasing = false
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
@@ -43,7 +45,7 @@ struct PaywallView: View {
                 .padding(.bottom, 24)
             }
             .background { SkyBackground() }
-            .navigationTitle("Orange Cloud Pro")
+            .ocNavigationTitle("Orange Cloud Pro")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -67,7 +69,7 @@ struct PaywallView: View {
         } message: {
             Text(entitlements.purchaseError ?? "")
         }
-        .sensoryFeedback(.success, trigger: entitlements.isPro)
+        .ocSensoryFeedback(.success, trigger: entitlements.isPro)
     }
 
     // MARK: - 头部
@@ -77,7 +79,7 @@ struct PaywallView: View {
             TintIcon(systemImage: feature?.systemImage ?? "sparkles", color: .ocOrange, size: 56)
                 .padding(.top, 12)
 
-            Text(feature?.headline ?? String(localized: "解锁多账号与全部专业功能"))
+            Text(feature?.headline ?? AppLocalization.string(localized: "解锁多账号与全部专业功能"))
                 .font(.title3.weight(.bold))
                 .multilineTextAlignment(.center)
 
@@ -114,12 +116,12 @@ struct PaywallView: View {
 
     private var featureList: some View {
         VStack(alignment: .leading, spacing: 12) {
-            bulletRow("person.2",                      String(localized: "多账号快速切换"))
-            bulletRow("externaldrive",                 String(localized: "存储管理（R2 / D1 / KV）"))
-            bulletRow("text.alignleft",                String(localized: "Workers 实时日志 + Live Activity"))
-            bulletRow("shield",                        String(localized: "WAF 规则启停"))
-            bulletRow("arrow.triangle.2.circlepath",   String(localized: "Cloudflare Tunnel"))
-            bulletRow("chart.xyaxis.line",             String(localized: "完整流量分析（7 / 30 天）"))
+            bulletRow("person.2",                      AppLocalization.string(localized: "多账号快速切换"))
+            bulletRow("externaldrive",                 AppLocalization.string(localized: "存储管理（R2 / D1 / KV）"))
+            bulletRow("text.alignleft",                AppLocalization.string(localized: "Workers 实时日志 + Live Activity"))
+            bulletRow("shield",                        AppLocalization.string(localized: "WAF 规则启停"))
+            bulletRow("arrow.triangle.2.circlepath",   AppLocalization.string(localized: "Cloudflare Tunnel"))
+            bulletRow("chart.xyaxis.line",             AppLocalization.string(localized: "完整流量分析（7 / 30 天）"))
         }
         .padding(OCLayout.islandPadding + 4)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -199,9 +201,9 @@ struct PaywallView: View {
 
     private func planName(_ product: Product) -> String {
         switch product.id {
-        case EntitlementStore.ProductID.yearly:   String(localized: "年度")
-        case EntitlementStore.ProductID.monthly:  String(localized: "月度")
-        case EntitlementStore.ProductID.lifetime: String(localized: "买断")
+        case EntitlementStore.ProductID.yearly:   AppLocalization.string(localized: "年度")
+        case EntitlementStore.ProductID.monthly:  AppLocalization.string(localized: "月度")
+        case EntitlementStore.ProductID.lifetime: AppLocalization.string(localized: "买断")
         default: product.displayName
         }
     }
@@ -210,12 +212,12 @@ struct PaywallView: View {
         switch product.id {
         case EntitlementStore.ProductID.yearly:
             product.subscription?.introductoryOffer != nil
-                ? String(localized: "7 天免费试用 · 每年自动续订")
-                : String(localized: "每年自动续订")
+                ? AppLocalization.string(localized: "7 天免费试用 · 每年自动续订")
+                : AppLocalization.string(localized: "每年自动续订")
         case EntitlementStore.ProductID.monthly:
-            String(localized: "每月自动续订")
+            AppLocalization.string(localized: "每月自动续订")
         case EntitlementStore.ProductID.lifetime:
-            String(localized: "一次性付费 · 含未来全部新模块")
+            AppLocalization.string(localized: "一次性付费 · 含未来全部新模块")
         default:
             product.description
         }
@@ -228,14 +230,14 @@ struct PaywallView: View {
     }
 
     private var ctaTitle: String {
-        guard let product = selectedProduct else { return String(localized: "解锁 Pro") }
+        guard let product = selectedProduct else { return AppLocalization.string(localized: "解锁 Pro") }
         switch product.id {
         case EntitlementStore.ProductID.lifetime:
-            return String(localized: "买断 Pro")
+            return AppLocalization.string(localized: "买断 Pro")
         case EntitlementStore.ProductID.yearly where product.subscription?.introductoryOffer != nil:
-            return String(localized: "开始 7 天免费试用")
+            return AppLocalization.string(localized: "开始 7 天免费试用")
         default:
-            return String(localized: "解锁 Pro")
+            return AppLocalization.string(localized: "解锁 Pro")
         }
     }
 
@@ -275,7 +277,7 @@ struct PaywallView: View {
         isPurchasing = true
         defer { isPurchasing = false }
         do {
-            let result = try await purchase(product)
+            let result = try await product.purchase()
             await entitlements.handle(result)
         } catch {
             entitlements.purchaseError = error.localizedDescription
@@ -304,5 +306,5 @@ struct PaywallView: View {
 
 #Preview {
     PaywallView(feature: .storage)
-        .environment(EntitlementStore.shared)
+        .environmentObject(EntitlementStore.shared)
 }

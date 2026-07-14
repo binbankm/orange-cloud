@@ -10,7 +10,7 @@ import SwiftUI
 
 struct CloudflareStatusView: View {
 
-    @State private var viewModel = CloudflareStatusViewModel()
+    @StateObject private var viewModel = CloudflareStatusViewModel()
 
     var body: some View {
         Group {
@@ -19,7 +19,7 @@ struct CloudflareStatusView: View {
             } else if let overall = viewModel.overall {
                 statusList(overall)
             } else {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("加载失败", systemImage: "wifi.exclamationmark")
                 } description: {
                     Text(viewModel.error ?? "")
@@ -34,7 +34,7 @@ struct CloudflareStatusView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("Cloudflare 状态")
+        .ocNavigationTitle("Cloudflare 状态")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load() }
     }
@@ -276,7 +276,7 @@ struct StatusIncidentDetailView: View {
                                     .foregroundStyle(Color.ocOrangeText)
                                 Spacer()
                                 if let date = WorkerScript.parseDate(update.displayAt) {
-                                    Text(date, format: .dateTime.month().day().hour().minute())
+                                    Text(AppLocalization.date(date, template: "MMMdjmm"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -292,7 +292,7 @@ struct StatusIncidentDetailView: View {
             }
         }
         .daybreakList()
-        .navigationTitle("事件详情")
+        .ocNavigationTitle("事件详情")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

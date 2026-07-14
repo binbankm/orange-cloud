@@ -19,7 +19,7 @@ nonisolated enum SpotlightIndexer {
         let items = zones.map { zone in
             let attributes = CSSearchableItemAttributeSet(contentType: .item)
             attributes.title = zone.name
-            attributes.contentDescription = String(localized: "Cloudflare 域名 · \(zone.status)")
+            attributes.contentDescription = AppLocalization.string(localized: "Cloudflare 域名 · \(zone.status)")
             attributes.keywords = ["Cloudflare", "Zone", "域名", zone.name]
             return CSSearchableItem(
                 uniqueIdentifier: "zone-\(zone.id)",
@@ -39,7 +39,7 @@ nonisolated enum SpotlightIndexer {
         let items = records.map { record in
             let attributes = CSSearchableItemAttributeSet(contentType: .item)
             attributes.title = record.name
-            attributes.contentDescription = String(localized: "\(record.type) 记录 · \(zoneName) · \(record.content)")
+            attributes.contentDescription = AppLocalization.string(localized: "\(record.type) 记录 · \(zoneName) · \(record.content)")
             attributes.keywords = ["DNS", record.type, zoneName, record.name]
             return CSSearchableItem(
                 uniqueIdentifier: "dns-\(record.id)",

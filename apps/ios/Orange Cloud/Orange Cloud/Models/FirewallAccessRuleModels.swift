@@ -17,11 +17,11 @@ nonisolated struct FirewallAccessRule: Codable, Identifiable, Sendable {
 
     var modeLabel: String {
         switch mode {
-        case "block":             String(localized: "拦截")
-        case "challenge":         String(localized: "质询")
-        case "js_challenge":      String(localized: "JS 质询")
-        case "managed_challenge": String(localized: "托管质询")
-        case "whitelist":         String(localized: "允许")
+        case "block":             AppLocalization.string(localized: "拦截")
+        case "challenge":         AppLocalization.string(localized: "质询")
+        case "js_challenge":      AppLocalization.string(localized: "JS 质询")
+        case "managed_challenge": AppLocalization.string(localized: "托管质询")
+        case "whitelist":         AppLocalization.string(localized: "允许")
         default:                  mode ?? "—"
         }
     }
@@ -35,9 +35,9 @@ nonisolated struct AccessRuleConfig: Codable, Sendable {
         switch target {
         case "ip":       "IP"
         case "ip6":      "IPv6"
-        case "ip_range": String(localized: "IP 段")
+        case "ip_range": AppLocalization.string(localized: "IP 段")
         case "asn":      "ASN"
-        case "country":  String(localized: "国家/地区")
+        case "country":  AppLocalization.string(localized: "国家/地区")
         default:         target ?? "—"
         }
     }
@@ -75,11 +75,11 @@ nonisolated enum AccessRuleMode: String, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .block:            String(localized: "拦截")
-        case .managedChallenge: String(localized: "托管质询")
-        case .jsChallenge:      String(localized: "JS 质询")
-        case .challenge:        String(localized: "质询")
-        case .whitelist:        String(localized: "允许")
+        case .block:            AppLocalization.string(localized: "拦截")
+        case .managedChallenge: AppLocalization.string(localized: "托管质询")
+        case .jsChallenge:      AppLocalization.string(localized: "JS 质询")
+        case .challenge:        AppLocalization.string(localized: "质询")
+        case .whitelist:        AppLocalization.string(localized: "允许")
         }
     }
 }
@@ -97,9 +97,9 @@ nonisolated enum AccessRuleTarget: String, CaseIterable, Identifiable, Sendable 
         switch self {
         case .ip:      "IP"
         case .ip6:     "IPv6"
-        case .ipRange: String(localized: "IP 段")
+        case .ipRange: AppLocalization.string(localized: "IP 段")
         case .asn:     "ASN"
-        case .country: String(localized: "国家/地区")
+        case .country: AppLocalization.string(localized: "国家/地区")
         }
     }
 
@@ -109,7 +109,7 @@ nonisolated enum AccessRuleTarget: String, CaseIterable, Identifiable, Sendable 
         case .ip6:     "2001:db8::1"
         case .ipRange: "192.0.2.0/24"
         case .asn:     "AS13335"
-        case .country: String(localized: "国家代码，如 US")
+        case .country: AppLocalization.string(localized: "国家代码，如 US")
         }
     }
 }

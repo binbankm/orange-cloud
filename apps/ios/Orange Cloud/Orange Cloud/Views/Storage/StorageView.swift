@@ -33,9 +33,9 @@ enum StorageKind: String, CaseIterable, Identifiable {
 
     var featureName: String {
         switch self {
-        case .r2: String(localized: "R2 对象存储")
-        case .d1: String(localized: "D1 数据库")
-        case .kv: String(localized: "KV 存储")
+        case .r2: AppLocalization.string(localized: "R2 对象存储")
+        case .d1: AppLocalization.string(localized: "D1 数据库")
+        case .kv: AppLocalization.string(localized: "KV 存储")
         }
     }
 
@@ -54,14 +54,17 @@ enum StorageKind: String, CaseIterable, Identifiable {
 /// 才翻转（ensureAccounts 延迟完成/重试），重建可见 NavigationStack 在 iOS 17.0.x
 /// 导航栏硬断言必崩（1.8.2(24) 复发根因，详见 DashboardView 注释）。
 struct StorageView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    private let session: SessionStore
+    @ObservedObject private var session: SessionStore
 
     init(session: SessionStore) {
-        self.session = session
+        _session = ObservedObject(wrappedValue: session)
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             StorageContent(session: session)
                 .id(session.selectedAccount?.id)
@@ -71,15 +74,16 @@ struct StorageView: View {
 
 /// 存储页内容（原 StorageView 本体）：ViewModel 持有的列表随外壳 `.id` 在账号切换时重置。
 private struct StorageContent: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(SessionStore.self) private var session
-    @Environment(AuthManager.self) private var auth
-    @Environment(EntitlementStore.self) private var entitlements
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var auth: AuthManager
+    @EnvironmentObject private var entitlements: EntitlementStore
 
     @State private var kind: StorageKind = .r2
-    @State private var r2ViewModel: R2BucketListViewModel
-    @State private var d1ViewModel: D1DatabaseListViewModel
-    @State private var kvViewModel: KVNamespaceListViewModel
+    @StateObject private var r2ViewModel: R2BucketListViewModel
+    @StateObject private var d1ViewModel: D1DatabaseListViewModel
+    @StateObject private var kvViewModel: KVNamespaceListViewModel
     @State private var showR2Create = false
     @State private var showD1Create = false
     @State private var showKVCreate = false
@@ -95,12 +99,14 @@ private struct StorageContent: View {
     private var canWriteKV: Bool { auth.hasScope(StorageKind.kv.writeScope) }
 
     init(session: SessionStore) {
-        _r2ViewModel = State(initialValue: R2BucketListViewModel(service: session.r2Service, analyticsService: session.analyticsService))
-        _d1ViewModel = State(initialValue: D1DatabaseListViewModel(service: session.d1Service))
-        _kvViewModel = State(initialValue: KVNamespaceListViewModel(service: session.kvService))
+        _r2ViewModel = StateObject(wrappedValue: R2BucketListViewModel(service: session.r2Service, analyticsService: session.analyticsService))
+        _d1ViewModel = StateObject(wrappedValue: D1DatabaseListViewModel(service: session.d1Service))
+        _kvViewModel = StateObject(wrappedValue: KVNamespaceListViewModel(service: session.kvService))
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             // 整模块 Pro 闸门：免费层不展示存储内容
             if entitlements.isPro {
@@ -111,7 +117,7 @@ private struct StorageContent: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("存储")
+        .ocNavigationTitle("存储")
         .toolbar {
             // R2 / D1 / KV 三段均提供创建入口（按各自写权限门控）
             if entitlements.isPro, auth.hasScope(kind.requiredScope) {
@@ -143,12 +149,12 @@ private struct StorageContent: View {
         } message: {
             Text("当前授权未包含此资源的写权限（\(kind.writeScope)）。\n请在设置中退出登录后重新授权以启用此功能。")
         }
-        .sensoryFeedback(.success, trigger: r2ViewModel.didCreate)
-        .sensoryFeedback(.success, trigger: r2ViewModel.didDelete)
-        .sensoryFeedback(.success, trigger: d1ViewModel.didCreate)
-        .sensoryFeedback(.success, trigger: d1ViewModel.didDelete)
-        .sensoryFeedback(.success, trigger: kvViewModel.didCreate)
-        .sensoryFeedback(.success, trigger: kvViewModel.didDelete)
+        .ocSensoryFeedback(.success, trigger: r2ViewModel.didCreate)
+        .ocSensoryFeedback(.success, trigger: r2ViewModel.didDelete)
+        .ocSensoryFeedback(.success, trigger: d1ViewModel.didCreate)
+        .ocSensoryFeedback(.success, trigger: d1ViewModel.didDelete)
+        .ocSensoryFeedback(.success, trigger: kvViewModel.didCreate)
+        .ocSensoryFeedback(.success, trigger: kvViewModel.didDelete)
     }
 
     private var proContent: some View {
@@ -190,10 +196,10 @@ private struct StorageContent: View {
         if r2ViewModel.buckets.isEmpty && r2ViewModel.isLoading {
             loadingView
         } else if r2ViewModel.buckets.isEmpty {
-            ContentUnavailableView {
+            OCContentUnavailableView {
                 Label("没有存储桶", systemImage: "archivebox")
             } description: {
-                Text(canWriteR2 ? String(localized: "点击右上角 + 创建第一个存储桶") : String(localized: "当前授权仅限读取，无法创建存储桶"))
+                Text(canWriteR2 ? AppLocalization.string(localized: "点击右上角 + 创建第一个存储桶") : AppLocalization.string(localized: "当前授权仅限读取，无法创建存储桶"))
             } actions: {
                 if canWriteR2 {
                     Button("创建存储桶") { showR2Create = true }
@@ -232,11 +238,11 @@ private struct StorageContent: View {
     private func r2Subtitle(for bucket: R2Bucket) -> String {
         if let usage = r2ViewModel.usageByBucket[bucket.name], usage.storageBytes > 0 || usage.objectCount > 0 {
             var parts = [Int64(usage.storageBytes).ocBytes]
-            if usage.objectCount > 0 { parts.append(String(localized: "\(usage.objectCount) 个对象")) }
-            if usage.totalRequests > 0 { parts.append(String(localized: "本月 \(usage.totalRequests.formatted()) 次操作")) }
+            if usage.objectCount > 0 { parts.append(AppLocalization.string(localized: "\(usage.objectCount) 个对象")) }
+            if usage.totalRequests > 0 { parts.append(AppLocalization.string(localized: "本月 \(usage.totalRequests.formatted()) 次操作")) }
             return parts.joined(separator: " · ")
         }
-        return [bucket.location, WorkerScript.parseDate(bucket.creationDate).map { $0.formatted(.dateTime.year().month().day()) }]
+        return [bucket.location, WorkerScript.parseDate(bucket.creationDate).map(AppLocalization.abbreviatedDate)]
             .compactMap(\.self).joined(separator: " · ")
     }
 
@@ -247,10 +253,10 @@ private struct StorageContent: View {
         if d1ViewModel.databases.isEmpty && d1ViewModel.isLoading {
             loadingView
         } else if d1ViewModel.databases.isEmpty {
-            ContentUnavailableView {
+            OCContentUnavailableView {
                 Label("没有数据库", systemImage: "cylinder")
             } description: {
-                Text(canWriteD1 ? String(localized: "点击右上角 + 创建第一个数据库") : String(localized: "当前授权仅限读取，无法创建数据库"))
+                Text(canWriteD1 ? AppLocalization.string(localized: "点击右上角 + 创建第一个数据库") : AppLocalization.string(localized: "当前授权仅限读取，无法创建数据库"))
             } actions: {
                 if canWriteD1 {
                     Button("创建数据库") { showD1Create = true }
@@ -270,7 +276,7 @@ private struct StorageContent: View {
                         name: database.name,
                         sub: [
                             database.fileSize.map { Int64($0).ocBytes },
-                            database.numTables.map { String(localized: "\($0) 张表") },
+                            database.numTables.map { AppLocalization.string(localized: "\($0) 张表") },
                         ].compactMap(\.self).joined(separator: " · ")
                     )
                 }
@@ -295,10 +301,10 @@ private struct StorageContent: View {
         if kvViewModel.namespaces.isEmpty && kvViewModel.isLoading {
             loadingView
         } else if kvViewModel.namespaces.isEmpty {
-            ContentUnavailableView {
+            OCContentUnavailableView {
                 Label("没有命名空间", systemImage: "key")
             } description: {
-                Text(canWriteKV ? String(localized: "点击右上角 + 创建第一个命名空间") : String(localized: "当前授权仅限读取，无法创建命名空间"))
+                Text(canWriteKV ? AppLocalization.string(localized: "点击右上角 + 创建第一个命名空间") : AppLocalization.string(localized: "当前授权仅限读取，无法创建命名空间"))
             } actions: {
                 if canWriteKV {
                     Button("创建命名空间") { showKVCreate = true }
@@ -364,6 +370,7 @@ private struct StorageContent: View {
 // MARK: - 存储行（设计稿 StorageRow）
 
 private struct StorageRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let icon: String
     let tint: Color
     let mono: Bool
@@ -371,6 +378,8 @@ private struct StorageRow: View {
     let sub: String
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         HStack(spacing: 12) {
             TintIcon(systemImage: icon, color: tint)
             VStack(alignment: .leading, spacing: 2) {

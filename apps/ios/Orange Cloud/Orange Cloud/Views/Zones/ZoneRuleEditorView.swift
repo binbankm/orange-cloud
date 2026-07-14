@@ -41,10 +41,11 @@ private extension TunnelJSONValue {
 // MARK: - 编辑器
 
 struct ZoneRuleEditorView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let phase: ZoneRulePhase
     let existing: ZoneRule?
-    let viewModel: ZonePhaseRulesViewModel
+    @ObservedObject var viewModel: ZonePhaseRulesViewModel
 
     @Environment(\.dismiss) private var dismiss
 
@@ -124,6 +125,8 @@ struct ZoneRuleEditorView: View {
     private var isEditing: Bool { existing != nil }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 if isReadOnly {
@@ -296,8 +299,8 @@ struct ZoneRuleEditorView: View {
             Text("重定向")
         } footer: {
             Text(redirectIsExpression
-                 ? String(localized: "目标为 Rules 表达式，求值结果作为跳转地址。")
-                 : String(localized: "301/308 为永久跳转，302/303/307 为临时跳转；307/308 保留原 HTTP 方法。"))
+                 ? AppLocalization.string(localized: "目标为 Rules 表达式，求值结果作为跳转地址。")
+                 : AppLocalization.string(localized: "301/308 为永久跳转，302/303/307 为临时跳转；307/308 保留原 HTTP 方法。"))
         }
     }
 
@@ -327,22 +330,22 @@ struct ZoneRuleEditorView: View {
 
     /// 可编辑的设置清单（key / 展示名 / 控件类型；schema 已核实，deprecated 项不入菜单但保留原值）
     private static let configSpecs: [(key: String, label: String, kind: ConfigKind)] = [
-        ("automatic_https_rewrites", String(localized: "自动 HTTPS 重写"), .toggle),
-        ("bic", String(localized: "浏览器完整性检查"), .toggle),
-        ("email_obfuscation", String(localized: "Email 混淆"), .toggle),
+        ("automatic_https_rewrites", AppLocalization.string(localized: "自动 HTTPS 重写"), .toggle),
+        ("bic", AppLocalization.string(localized: "浏览器完整性检查"), .toggle),
+        ("email_obfuscation", AppLocalization.string(localized: "Email 混淆"), .toggle),
         ("fonts", "Cloudflare Fonts", .toggle),
-        ("hotlink_protection", String(localized: "热链保护"), .toggle),
-        ("opportunistic_encryption", String(localized: "机会性加密"), .toggle),
+        ("hotlink_protection", AppLocalization.string(localized: "热链保护"), .toggle),
+        ("opportunistic_encryption", AppLocalization.string(localized: "机会性加密"), .toggle),
         ("rocket_loader", "Rocket Loader", .toggle),
-        ("security_level", String(localized: "安全级别"), .choice(["off", "essentially_off", "low", "medium", "high", "under_attack"])),
+        ("security_level", AppLocalization.string(localized: "安全级别"), .choice(["off", "essentially_off", "low", "medium", "high", "under_attack"])),
         ("ssl", "SSL", .choice(["off", "flexible", "full", "strict", "origin_pull"])),
         ("polish", "Polish", .choice(["off", "lossless", "lossy", "webp"])),
-        ("request_body_buffering", String(localized: "请求体缓冲"), .choice(["none", "standard", "full"])),
-        ("response_body_buffering", String(localized: "响应体缓冲"), .choice(["none", "standard"])),
-        ("autominify", String(localized: "自动压缩源码"), .autominify),
-        ("disable_zaraz", String(localized: "停用 Zaraz"), .disableFlag),
-        ("disable_rum", String(localized: "停用 RUM"), .disableFlag),
-        ("disable_pay_per_crawl", String(localized: "停用 Pay Per Crawl"), .disableFlag),
+        ("request_body_buffering", AppLocalization.string(localized: "请求体缓冲"), .choice(["none", "standard", "full"])),
+        ("response_body_buffering", AppLocalization.string(localized: "响应体缓冲"), .choice(["none", "standard"])),
+        ("autominify", AppLocalization.string(localized: "自动压缩源码"), .autominify),
+        ("disable_zaraz", AppLocalization.string(localized: "停用 Zaraz"), .disableFlag),
+        ("disable_rum", AppLocalization.string(localized: "停用 RUM"), .disableFlag),
+        ("disable_pay_per_crawl", AppLocalization.string(localized: "停用 Pay Per Crawl"), .disableFlag),
     ]
 
     enum ConfigKind { case toggle, disableFlag, choice([String]), autominify }

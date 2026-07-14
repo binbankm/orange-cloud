@@ -13,9 +13,9 @@ struct R2BucketSettingsView: View {
     let canWrite: Bool
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(AuthManager.self) private var auth
-    @Environment(EntitlementStore.self) private var entitlements
-    @State private var viewModel: R2BucketSettingsViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @EnvironmentObject private var entitlements: EntitlementStore
+    @StateObject private var viewModel: R2BucketSettingsViewModel
     @State private var showAddCors = false
     @State private var showDenied = false
 
@@ -30,7 +30,7 @@ struct R2BucketSettingsView: View {
         self.canWrite = canWrite
         self.bucketName = bucket.name
         self.accountId = session.selectedAccount?.id ?? ""
-        _viewModel = State(initialValue: R2BucketSettingsViewModel(
+        _viewModel = StateObject(wrappedValue: R2BucketSettingsViewModel(
             service: session.r2Service,
             accountId: session.selectedAccount?.id ?? "",
             bucketName: bucket.name
@@ -45,7 +45,7 @@ struct R2BucketSettingsView: View {
                 customDomainsSection
                 corsSection
             }
-            .navigationTitle("桶设置")
+            .ocNavigationTitle("桶设置")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -81,7 +81,7 @@ struct R2BucketSettingsView: View {
             } message: {
                 Text(viewModel.error ?? "")
             }
-            .sensoryFeedback(.success, trigger: viewModel.didChange)
+            .ocSensoryFeedback(.success, trigger: viewModel.didChange)
         }
     }
 
@@ -330,7 +330,7 @@ private struct R2CorsRuleEditor: View {
                         .keyboardType(.numberPad)
                 }
             }
-            .navigationTitle("添加 CORS 规则")
+            .ocNavigationTitle("添加 CORS 规则")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

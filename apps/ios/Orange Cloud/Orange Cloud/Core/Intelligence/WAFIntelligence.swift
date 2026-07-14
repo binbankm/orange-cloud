@@ -8,13 +8,13 @@
 //   2. 反向：把现有表达式翻译成大白话，零风险只读。
 //
 //  全部离线、免费、不出设备，与本 App「不用贴 API Token」的隐私定位一致。
-//  基线 iOS 17：所有 FoundationModels API 走 #available(iOS 26) 守卫，老设备保留手敲入口。
+//  基线 iOS 16：所有 FoundationModels API 走 #available(iOS 26) 守卫，老设备保留手敲入口。
 //
 
 import Foundation
 import FoundationModels
 
-// MARK: - 对外纯数据类型（不依赖 FoundationModels，iOS 17 也可引用）
+// MARK: - 对外纯数据类型（不依赖 FoundationModels，iOS 16 也可引用）
 
 /// 渲染完成的规则草稿：表达式已拼好，动作复用既有枚举，summary 是给用户核对的自然语言回读。
 nonisolated struct GeneratedWAFRule: Sendable {
@@ -30,8 +30,8 @@ nonisolated enum WAFAssistantError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unsupported:       String(localized: "此设备不支持设备端 AI（需要 iOS 26 及支持 Apple 智能的机型）。")
-        case .emptyResult:       String(localized: "没能理解这条描述，换个说法再试试。")
+        case .unsupported:       AppLocalization.string(localized: "此设备不支持设备端 AI（需要 iOS 26 及支持 Apple 智能的机型）。")
+        case .emptyResult:       AppLocalization.string(localized: "没能理解这条描述，换个说法再试试。")
         case .generation(let m): m
         }
     }
@@ -314,7 +314,7 @@ nonisolated enum WAFExpressionLint {
     /// 返回结构问题的本地化描述；结构看起来没问题时返回 nil。保守起见只查明显错误。
     nonisolated static func problem(in expression: String) -> String? {
         let trimmed = expression.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return String(localized: "表达式不能为空") }
+        guard !trimmed.isEmpty else { return AppLocalization.string(localized: "表达式不能为空") }
 
         var inString = false
         var escaped = false
@@ -327,11 +327,11 @@ nonisolated enum WAFExpressionLint {
             if ch == "(" { depth += 1 }
             if ch == ")" {
                 depth -= 1
-                if depth < 0 { return String(localized: "括号不匹配") }
+                if depth < 0 { return AppLocalization.string(localized: "括号不匹配") }
             }
         }
-        if inString { return String(localized: "引号不匹配") }
-        if depth != 0 { return String(localized: "括号不匹配") }
+        if inString { return AppLocalization.string(localized: "引号不匹配") }
+        if depth != 0 { return AppLocalization.string(localized: "括号不匹配") }
         return nil
     }
 }

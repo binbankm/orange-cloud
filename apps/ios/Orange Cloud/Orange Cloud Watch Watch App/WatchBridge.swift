@@ -13,18 +13,18 @@ import Foundation
 import SwiftUI
 import WidgetKit
 import WatchConnectivity
+import Combine
 
 @MainActor
-@Observable
-final class WatchBridge: NSObject {
+final class WatchBridge: NSObject, ObservableObject {
 
-    var zones:       [WidgetZoneMetrics] = []
-    var usage:       WidgetUsageData?
-    var accountAnalyticsUnavailable: Bool = false   // 账户级数据无权限（免费账号）
-    var accountName: String = ""
-    var lastUpdated: Date?
-    var hasToken:    Bool = false
-    var isReachable: Bool = false
+    @Published var zones: [WidgetZoneMetrics] = []
+    @Published var usage: WidgetUsageData?
+    @Published var accountAnalyticsUnavailable = false   // 账户级数据无权限（免费账号）
+    @Published var accountName = ""
+    @Published var lastUpdated: Date?
+    @Published var hasToken = false
+    @Published var isReachable = false
 
     private static let accountNameKey = "watchAccountName"
 

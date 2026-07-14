@@ -7,19 +7,18 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class SnippetsViewModel {
+final class SnippetsViewModel: ObservableObject {
 
-    private(set) var snippets: [Snippet] = []
-    private(set) var rules:    [SnippetRule] = []
-    private(set) var loaded = false        // 区分"未加载"与"加载过但为空"
-    var isLoading = false
-    var isSaving  = false
-    var togglingRuleId: String?
-    var error: String?
+    @Published private(set) var snippets: [Snippet] = []
+    @Published private(set) var rules: [SnippetRule] = []
+    @Published private(set) var loaded = false
+    @Published var isLoading = false
+    @Published var isSaving = false
+    @Published var togglingRuleId: String?
+    @Published var error: String?
 
     private let service: SnippetService
     let zoneId: String

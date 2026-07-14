@@ -34,11 +34,11 @@ nonisolated struct CacheRule: Codable, Identifiable, Sendable {
 
     /// 列表行一句话摘要
     var summary: String {
-        guard let p = actionParameters else { return String(localized: "默认缓存设置") }
-        if p.cache == false { return String(localized: "绕过缓存") }
-        var parts: [String] = [String(localized: "可缓存")]
-        if let edge = p.edgeTtl { parts.append(String(localized: "边缘：\(edge.modeLabel)")) }
-        if let browser = p.browserTtl { parts.append(String(localized: "浏览器：\(browser.modeLabel)")) }
+        guard let p = actionParameters else { return AppLocalization.string(localized: "默认缓存设置") }
+        if p.cache == false { return AppLocalization.string(localized: "绕过缓存") }
+        var parts: [String] = [AppLocalization.string(localized: "可缓存")]
+        if let edge = p.edgeTtl { parts.append(AppLocalization.string(localized: "边缘：\(edge.modeLabel)")) }
+        if let browser = p.browserTtl { parts.append(AppLocalization.string(localized: "浏览器：\(browser.modeLabel)")) }
         return parts.joined(separator: " · ")
     }
 }
@@ -146,9 +146,9 @@ nonisolated enum CacheTTLMode: String, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .respectOrigin:   String(localized: "遵循源站")
-        case .overrideOrigin:  String(localized: "覆盖为固定值")
-        case .bypassByDefault: String(localized: "源站无指令则不缓存")
+        case .respectOrigin:   AppLocalization.string(localized: "遵循源站")
+        case .overrideOrigin:  AppLocalization.string(localized: "覆盖为固定值")
+        case .bypassByDefault: AppLocalization.string(localized: "源站无指令则不缓存")
         }
     }
 }
@@ -159,8 +159,8 @@ nonisolated enum CacheEligibility: String, CaseIterable, Identifiable, Sendable 
     var id: String { rawValue }
     var label: String {
         switch self {
-        case .eligible: String(localized: "可缓存")
-        case .bypass:   String(localized: "绕过缓存")
+        case .eligible: AppLocalization.string(localized: "可缓存")
+        case .bypass:   AppLocalization.string(localized: "绕过缓存")
         }
     }
 }

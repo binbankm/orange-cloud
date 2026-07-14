@@ -7,11 +7,10 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class SessionStore {
+final class SessionStore: ObservableObject {
 
     let accountService:    AccountService
     let zoneService:       ZoneService
@@ -44,16 +43,16 @@ final class SessionStore {
     let hyperdriveService:         HyperdriveService
     let zoneRulesetService:        ZoneRulesetService
 
-    var accounts: [Account] = []
-    var selectedAccount: Account? {
+    @Published var accounts: [Account] = []
+    @Published var selectedAccount: Account? {
         didSet {
             // Widget 自取用量数据需要知道当前账户
             UserDefaults(suiteName: WidgetSnapshot.appGroupID)?
                 .set(selectedAccount?.id, forKey: "currentAccountId")
         }
     }
-    var isLoadingAccounts = false
-    var error: String?
+    @Published var isLoadingAccounts = false
+    @Published var error: String?
 
     private let authManager: AuthManager
     /// 本会话对应的登录身份（SessionStore 按身份重建，加载完成回填账号名时

@@ -28,11 +28,11 @@ nonisolated struct Tunnel: Codable, Identifiable, Hashable, Sendable {
 
     var statusText: String {
         switch status {
-        case "healthy":  String(localized: "运行中")
-        case "degraded": String(localized: "降级")
-        case "down":     String(localized: "离线")
-        case "inactive": String(localized: "未激活")
-        default:         status ?? String(localized: "未知")
+        case "healthy":  AppLocalization.string(localized: "运行中")
+        case "degraded": AppLocalization.string(localized: "降级")
+        case "down":     AppLocalization.string(localized: "离线")
+        case "inactive": AppLocalization.string(localized: "未激活")
+        default:         status ?? AppLocalization.string(localized: "未知")
         }
     }
 }
@@ -156,7 +156,7 @@ nonisolated enum IngressServiceKind: String, CaseIterable, Identifiable, Sendabl
         case .tcp:   "TCP"
         case .ssh:   "SSH"
         case .rdp:   "RDP"
-        case .other: String(localized: "其他")
+        case .other: AppLocalization.string(localized: "其他")
         }
     }
 

@@ -6,16 +6,15 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct DNSRecordFormView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let mode: DNSFormMode
-    let viewModel: DNSListViewModel
+    @ObservedObject var viewModel: DNSListViewModel
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
-    @Environment(EntitlementStore.self) private var entitlements
+    @EnvironmentObject private var entitlements: EntitlementStore
 
     @State private var type:     String = "A"
     @State private var name:     String = ""
@@ -32,12 +31,12 @@ struct DNSRecordFormView: View {
 
     private static let recordTypes = ["A", "AAAA", "CNAME", "TXT", "MX", "NS"]
     private static let ttlOptions: [(label: String, value: Int)] = [
-        (String(localized: "自动"), 1),
-        (String(localized: "1 分钟"), 60),
-        (String(localized: "5 分钟"), 300),
-        (String(localized: "30 分钟"), 1800),
-        (String(localized: "1 小时"), 3600),
-        (String(localized: "1 天"), 86400),
+        (AppLocalization.string(localized: "自动"), 1),
+        (AppLocalization.string(localized: "1 分钟"), 60),
+        (AppLocalization.string(localized: "5 分钟"), 300),
+        (AppLocalization.string(localized: "30 分钟"), 1800),
+        (AppLocalization.string(localized: "1 小时"), 3600),
+        (AppLocalization.string(localized: "1 天"), 86400),
     ]
 
     /// 只有 A / AAAA / CNAME 支持 Cloudflare 代理
@@ -58,22 +57,24 @@ struct DNSRecordFormView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 if DNSAssistant.isReady && !isEditing {
                     aiSection
                 }
 
-                Section("类型") {
-                    Picker("记录类型", selection: $type) {
+                Section(AppLocalization.string(localized: "类型")) {
+                    Picker(AppLocalization.string(localized: "记录类型"), selection: $type) {
                         ForEach(Self.recordTypes, id: \.self) { Text($0).tag($0) }
                     }
                     .pickerStyle(.segmented)
                     .disabled(isEditing)   // CF API 不允许修改记录类型
                 }
 
-                Section("记录") {
-                    TextField("名称（@ 表示根域名）", text: $name)
+                Section(AppLocalization.string(localized: "记录")) {
+                    TextField(AppLocalization.string(localized: "名称（@ 表示根域名）"), text: $name)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                     TextField(contentPlaceholder, text: $content, axis: .vertical)
@@ -81,15 +82,15 @@ struct DNSRecordFormView: View {
                         .autocorrectionDisabled()
                         .font(.callout.monospaced())
                     if needsPriority {
-                        Stepper("优先级：\(priority)", value: $priority, in: 0...65535)
+                        Stepper(AppLocalization.string(localized: "优先级：\(priority)"), value: $priority, in: 0...65535)
                     }
                 }
 
-                Section("解析设置") {
+                Section(AppLocalization.string(localized: "解析设置")) {
                     if supportsProxy {
                         Toggle(isOn: $proxied) {
                             Label {
-                                Text("Cloudflare 代理")
+                                Text(AppLocalization.string(localized: "Cloudflare 代理"))
                             } icon: {
                                 ProxiedBadge(proxied: proxied)
                             }
@@ -104,8 +105,8 @@ struct DNSRecordFormView: View {
                     }
                 }
 
-                Section("备注") {
-                    TextField("可选备注", text: $comment)
+                Section(AppLocalization.string(localized: "备注")) {
+                    TextField(AppLocalization.string(localized: "可选备注"), text: $comment)
                 }
 
                 if let error = viewModel.error {
@@ -116,11 +117,11 @@ struct DNSRecordFormView: View {
                     }
                 }
             }
-            .navigationTitle(isEditing ? String(localized: "编辑记录") : String(localized: "新建记录"))
+            .navigationTitle(isEditing ? AppLocalization.string(localized: "编辑记录") : AppLocalization.string(localized: "新建记录"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+                    Button(AppLocalization.string(localized: "取消")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
@@ -129,7 +130,7 @@ struct DNSRecordFormView: View {
                         if viewModel.isSaving {
                             ProgressView()
                         } else {
-                            Text("保存").fontWeight(.semibold)
+                            Text(AppLocalization.string(localized: "保存")).fontWeight(.semibold)
                         }
                     }
                     .disabled(!canSave)
@@ -150,7 +151,7 @@ struct DNSRecordFormView: View {
     private var aiSection: some View {
         Section {
             TextField(
-                String(localized: "例如：给 blog 加一条指向 1.2.3.4 的 A 记录"),
+                AppLocalization.string(localized: "例如：给 blog 加一条指向 1.2.3.4 的 A 记录"),
                 text: $nlPrompt,
                 axis: .vertical
             )
@@ -166,10 +167,10 @@ struct DNSRecordFormView: View {
                 HStack(spacing: 8) {
                     if viewModel.isGenerating {
                         ProgressView().controlSize(.small)
-                        Text("生成中…")
+                        Text(AppLocalization.string(localized: "生成中…"))
                     } else {
                         Image(systemName: "sparkles")
-                        Text("生成记录")
+                        Text(AppLocalization.string(localized: "生成记录"))
                     }
                     if !entitlements.isPro {
                         Spacer()
@@ -198,11 +199,11 @@ struct DNSRecordFormView: View {
                     .foregroundStyle(.red)
             }
         } header: {
-            Label("用自然语言描述", systemImage: "sparkles")
+            Label(AppLocalization.string(localized: "用自然语言描述"), systemImage: "sparkles")
         } footer: {
             Text(readback == nil
-                 ? String(localized: "在设备上离线生成，已为你填好下方表单，提交前请核对。")
-                 : String(localized: "已填好下方表单，确认无误后再保存。"))
+                 ? AppLocalization.string(localized: "在设备上离线生成，已为你填好下方表单，提交前请核对。")
+                 : AppLocalization.string(localized: "已填好下方表单，确认无误后再保存。"))
         }
     }
 
@@ -211,7 +212,7 @@ struct DNSRecordFormView: View {
             readback = nil
             return
         }
-        withAnimation(.smooth) {
+        withAnimation(.ocSmooth) {
             let record = result.record
             type    = record.type
             name    = record.name
@@ -225,13 +226,13 @@ struct DNSRecordFormView: View {
 
     private var contentPlaceholder: String {
         switch type {
-        case "A":     String(localized: "IPv4 地址，如 203.0.113.1")
-        case "AAAA":  String(localized: "IPv6 地址，如 2001:db8::1")
-        case "CNAME": String(localized: "目标域名，如 example.com")
-        case "TXT":   String(localized: "文本内容")
-        case "MX":    String(localized: "邮件服务器，如 mail.example.com")
-        case "NS":    String(localized: "Name Server 域名")
-        default:      String(localized: "记录值")
+        case "A":     AppLocalization.string(localized: "IPv4 地址，如 203.0.113.1")
+        case "AAAA":  AppLocalization.string(localized: "IPv6 地址，如 2001:db8::1")
+        case "CNAME": AppLocalization.string(localized: "目标域名，如 example.com")
+        case "TXT":   AppLocalization.string(localized: "文本内容")
+        case "MX":    AppLocalization.string(localized: "邮件服务器，如 mail.example.com")
+        case "NS":    AppLocalization.string(localized: "Name Server 域名")
+        default:      AppLocalization.string(localized: "记录值")
         }
     }
 
@@ -258,7 +259,7 @@ struct DNSRecordFormView: View {
             comment:  comment.isEmpty ? nil : comment
         )
         let recordId: String? = if case .edit(let cached) = mode { cached.id } else { nil }
-        if await viewModel.save(recordId: recordId, record: record, context: modelContext) {
+        if await viewModel.save(recordId: recordId, record: record) {
             dismiss()
         }
     }

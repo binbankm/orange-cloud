@@ -4,18 +4,17 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class PushCenterViewModel {
+final class PushCenterViewModel: ObservableObject {
 
     let registrar = PushRegistrar.shared
-    private(set) var inbox: [PushMessage] = []
-    var error: String?
-    var testSending = false
-    var testResult: String?
-    private(set) var e2eKey: String? = PushConfig.e2eKey
+    @Published private(set) var inbox: [PushMessage] = []
+    @Published var error: String?
+    @Published var testSending = false
+    @Published var testResult: String?
+    @Published private(set) var e2eKey: String? = PushConfig.e2eKey
 
     func refresh() {
         inbox = PushInbox.all()
@@ -47,7 +46,7 @@ final class PushCenterViewModel {
     func sendTest() async {
         guard let endpoint = PushConfig.endpointURL else { return }
         let title = "Orange Cloud".addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? "Orange%20Cloud"
-        let body = String(localized: "测试推送").addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? "test"
+        let body = AppLocalization.string(localized: "测试推送").addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? "test"
         guard let url = URL(string: "\(endpoint)/\(title)/\(body)") else { return }
         testSending = true
         testResult = nil
@@ -55,7 +54,7 @@ final class PushCenterViewModel {
         do {
             let (_, response) = try await URLSession.shared.data(from: url)
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
-            testResult = (200...299).contains(code) ? String(localized: "已发送") : String(localized: "失败（\(code)）")
+            testResult = (200...299).contains(code) ? AppLocalization.string(localized: "已发送") : AppLocalization.string(localized: "失败（\(code)）")
         } catch {
             self.error = error.localizedDescription
         }

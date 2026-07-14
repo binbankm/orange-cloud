@@ -153,9 +153,15 @@ nonisolated struct RDAPService {
         let joined = base.hasSuffix("/") ? "\(base)domain/\(name)" : "\(base)/domain/\(name)"
         guard let url = URL(string: joined) else { throw APIError.networkError(URLError(.badURL)) }
 
+        return try await fetchRDAP(url: url, domain: name, isRedirect: false)
+    }
+
+    private func fetchRDAP(url: URL, domain: String, isRedirect: Bool) async throws -> WhoisInfo {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10
         let data: Data
         let response: URLResponse
-        do { (data, response) = try await session.data(from: url) }
+        do { (data, response) = try await session.data(for: request) }
         catch { throw APIError.networkError(error) }
         guard let http = response as? HTTPURLResponse else { throw APIError.networkError(URLError(.badServerResponse)) }
         if http.statusCode == 404 { throw APIError.notFound }
@@ -164,7 +170,29 @@ nonisolated struct RDAPService {
         guard let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             throw APIError.decodingError(URLError(.cannotParseResponse))
         }
-        return Self.parse(obj, domain: name)
+        let parsed = Self.parse(obj, domain: domain)
+
+        // Follow redirect links if expiration is missing and we haven't redirected yet
+        if parsed.expires == nil && !isRedirect {
+            if let links = obj["links"] as? [[String: Any]],
+               let related = links.first(where: { ($0["rel"] as? String) == "related" || ($0["rel"] as? String) == "registrar" }),
+               let href = related["href"] as? String,
+               let redirectUrl = URL(string: href) {
+                if let redirectedParsed = try? await fetchRDAP(url: redirectUrl, domain: domain, isRedirect: true) {
+                    // Return redirected result if it contains better information
+                    return WhoisInfo(
+                        domain: parsed.domain,
+                        statuses: redirectedParsed.statuses.isEmpty ? parsed.statuses : redirectedParsed.statuses,
+                        registrar: redirectedParsed.registrar ?? parsed.registrar,
+                        created: redirectedParsed.created ?? parsed.created,
+                        updated: redirectedParsed.updated ?? parsed.updated,
+                        expires: redirectedParsed.expires ?? parsed.expires,
+                        nameservers: redirectedParsed.nameservers.isEmpty ? parsed.nameservers : redirectedParsed.nameservers
+                    )
+                }
+            }
+        }
+        return parsed
     }
 
     /// IANA RDAP bootstrap：按 TLD 找到对应 RDAP 服务器基址
@@ -190,21 +218,41 @@ nonisolated struct RDAPService {
 
     private static func parse(_ obj: [String: Any], domain: String) -> WhoisInfo {
         let statuses = obj["status"] as? [String] ?? []
-        let events = obj["events"] as? [[String: Any]] ?? []
-        func eventDate(_ action: String) -> Date? {
-            guard let raw = events.first(where: { ($0["eventAction"] as? String) == action })?["eventDate"] as? String else { return nil }
+        let allEvents = extractEvents(from: obj)
+        
+        func eventDate(_ actionMatch: (String) -> Bool) -> Date? {
+            guard let raw = allEvents.first(where: { 
+                guard let action = ($0["eventAction"] as? String)?.lowercased() else { return false }
+                return actionMatch(action)
+            })?["eventDate"] as? String else { return nil }
             return isoDate(raw)
         }
+        
         let nameservers = (obj["nameservers"] as? [[String: Any]])?.compactMap { $0["ldhName"] as? String } ?? []
         return WhoisInfo(
             domain: (obj["ldhName"] as? String) ?? domain,
             statuses: statuses,
             registrar: registrarName(obj["entities"]),
-            created: eventDate("registration"),
-            updated: eventDate("last changed"),
-            expires: eventDate("expiration"),
+            created: eventDate { $0.contains("registration") && !$0.contains("expiration") },
+            updated: eventDate { $0.contains("last changed") || $0.contains("update") },
+            expires: eventDate { $0.contains("expiration") },
             nameservers: nameservers
         )
+    }
+
+    private static func extractEvents(from node: Any) -> [[String: Any]] {
+        var found: [[String: Any]] = []
+        if let dict = node as? [String: Any] {
+            if let events = dict["events"] as? [[String: Any]] {
+                found.append(contentsOf: events)
+            }
+            if let entities = dict["entities"] as? [[String: Any]] {
+                for entity in entities {
+                    found.append(contentsOf: extractEvents(from: entity))
+                }
+            }
+        }
+        return found
     }
 
     private static func registrarName(_ entities: Any?) -> String? {

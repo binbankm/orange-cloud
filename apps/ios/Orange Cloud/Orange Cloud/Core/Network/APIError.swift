@@ -18,15 +18,15 @@ nonisolated enum APIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unauthorized:                return String(localized: "登录已过期，请重新登录")
-        case .forbidden:                   return String(localized: "权限不足，请检查 OAuth Scope")
-        case .notFound:                    return String(localized: "资源不存在")
-        case .rateLimited:                 return String(localized: "请求太频繁，请稍后再试")
-        case .serverError(let code):       return String(localized: "服务器错误（\(code)）")
+        case .unauthorized:                return AppLocalization.string(localized: "登录已过期，请重新登录")
+        case .forbidden:                   return AppLocalization.string(localized: "权限不足，请检查 OAuth Scope")
+        case .notFound:                    return AppLocalization.string(localized: "资源不存在")
+        case .rateLimited:                 return AppLocalization.string(localized: "请求太频繁，请稍后再试")
+        case .serverError(let code):       return AppLocalization.string(localized: "服务器错误（\(code)）")
         case .cloudflareError(_, let msg): return msg
-        case .decodingError:               return String(localized: "数据解析失败")
-        case .networkError(let e):         return String(localized: "网络错误：\(e.localizedDescription)")
-        case .accountNotAuthorized:        return String(localized: "此账号暂无账户级数据查询权限")
+        case .decodingError:               return AppLocalization.string(localized: "数据解析失败")
+        case .networkError(let e):         return AppLocalization.string(localized: "网络错误：\(e.localizedDescription)")
+        case .accountNotAuthorized:        return AppLocalization.string(localized: "此账号暂无账户级数据查询权限")
         }
     }
 

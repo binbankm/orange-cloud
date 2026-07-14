@@ -2,39 +2,12 @@
 //  AvailabilityCompat.swift
 //  Orange Cloud
 //
-//  集中存放跨 iOS 版本的 SwiftUI 兼容封装：基线 iOS 17，对 iOS 18+ 专属 API
+//  集中存放跨 iOS 版本的 SwiftUI 兼容封装：基线 iOS 16，对 iOS 17+/18+ 专属 API
 //  统一在此降级，避免在各视图里散落 #available 守卫。
 //
 
 import SwiftUI
 import UIKit
-import TipKit
-
-extension ProcessInfo {
-    /// 当前系统是否落在 iOS 17.0.x（17.0 / 17.0.1 / 17.0.2 / 17.0.3）。
-    /// 这一窄段的 TipKit 把 popover 锚定到导航栏 bar button 时，会在
-    /// `-[UINavigationBar layoutSubviews]` 阶段抛未捕获异常导致崩溃，Apple 自 17.1 起修复。
-    /// 仅用于对这段版本做最小化 UI 降级，勿扩大到 17.1+。
-    nonisolated static var isBuggyTipKitNavBar: Bool {
-        let v = processInfo.operatingSystemVersion
-        return v.majorVersion == 17 && v.minorVersion == 0
-    }
-}
-
-extension View {
-    /// `popoverTip` 的安全封装：iOS 17.0.x 上跳过（见 ``ProcessInfo/isBuggyTipKitNavBar``），
-    /// 避免导航栏锚定的 TipKit popover 崩溃；17.1+ 与更高版本行为不变，正常展示气泡提示。
-    /// 适用于挂在工具栏 bar button 上的提示；非导航栏场景同样安全（17.0.x 仅少展示一次提示）。
-    @ViewBuilder
-    func safePopoverTip<T: Tip>(_ tip: T) -> some View {
-        if ProcessInfo.isBuggyTipKitNavBar {
-            self
-        } else {
-            popoverTip(tip)
-        }
-    }
-}
-
 // MARK: - 统一动效信号
 
 private struct AppReduceMotionKey: EnvironmentKey {
@@ -52,12 +25,12 @@ extension EnvironmentValues {
 }
 
 extension View {
-    /// 详情页：iOS 18+ 应用 Zoom 导航转场；iOS 17 或开启「减少动画」时原样返回（标准 push）。
+    /// 详情页：iOS 18+ 应用 Zoom 导航转场；iOS 16/17 或开启「减少动画」时原样返回（标准 push）。
     func zoomNavigationTransition<ID: Hashable>(sourceID: ID, in namespace: Namespace.ID) -> some View {
         modifier(ZoomNavigationTransition(sourceID: sourceID, namespace: namespace))
     }
 
-    /// 源视图（列表行）：iOS 18+ 标记 Zoom 转场源；iOS 17 无操作。
+    /// 源视图（列表行）：iOS 18+ 标记 Zoom 转场源；iOS 16/17 无操作。
     @ViewBuilder
     func zoomTransitionSource(id: some Hashable, in namespace: Namespace.ID) -> some View {
         if #available(iOS 18.0, *) {
@@ -73,19 +46,75 @@ extension View {
     func loadingSpinSymbolEffect(isActive: Bool) -> some View {
         if #available(iOS 18.0, *) {
             symbolEffect(.rotate, isActive: isActive)
-        } else {
+        } else if #available(iOS 17.0, *) {
             symbolEffect(.pulse, isActive: isActive)
+        } else {
+            self
         }
     }
 
     /// 出现时弹一下（一次性 bounce）：iOS 18+ 用 .nonRepeating 持续效果；
-    /// iOS 17 静态显示（.bounce 的“持续效果”conformance 自 iOS 18 起才有）。
+    /// iOS 16/17 静态显示（.bounce 的“持续效果”conformance 自 iOS 18 起才有）。
     @ViewBuilder
     func oneShotBounceSymbolEffect() -> some View {
         if #available(iOS 18.0, *) {
             symbolEffect(.bounce, options: .nonRepeating)
         } else {
             self
+        }
+    }
+
+    /// iOS 16 的触感反馈替代 `sensoryFeedback`（后者从 iOS 17 起提供）。
+    func ocSensoryFeedback<T: Equatable>(_ feedback: OCSensoryFeedback, trigger: T) -> some View {
+        modifier(OCSensoryFeedbackModifier(feedback: feedback, trigger: trigger))
+    }
+}
+
+// MARK: - 动画兼容
+
+extension Animation {
+    /// iOS 17 的 `.smooth` 在 iOS 16 上以同等节奏的 ease-in-out 降级。
+    static var ocSmooth: Animation {
+        if #available(iOS 17.0, *) {
+            return .smooth
+        }
+        return .easeInOut(duration: 0.35)
+    }
+
+    /// 带时长的 `.smooth` 兼容版本。
+    static func ocSmooth(duration: TimeInterval) -> Animation {
+        if #available(iOS 17.0, *) {
+            return .smooth(duration: duration)
+        }
+        return .easeInOut(duration: duration)
+    }
+
+    /// iOS 17 的 `.snappy` 在 iOS 16 使用接近的弹簧参数。
+    static var ocSnappy: Animation {
+        if #available(iOS 17.0, *) {
+            return .snappy
+        }
+        return .spring(response: 0.35, dampingFraction: 0.82)
+    }
+}
+
+enum OCSensoryFeedback {
+    case success
+    case impact(weight: UIImpactFeedbackGenerator.FeedbackStyle)
+}
+
+private struct OCSensoryFeedbackModifier<T: Equatable>: ViewModifier {
+    let feedback: OCSensoryFeedback
+    let trigger: T
+
+    func body(content: Content) -> some View {
+        content.onChange(of: trigger) { _ in
+            switch feedback {
+            case .success:
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            case .impact(let weight):
+                UIImpactFeedbackGenerator(style: weight).impactOccurred()
+            }
         }
     }
 }
@@ -108,7 +137,7 @@ private struct ZoomNavigationTransition<ID: Hashable>: ViewModifier {
 }
 
 extension Color {
-    /// Color.mix(with:by:) 的兼容封装：iOS 18+ 用系统实现；iOS 17 回退 UIColor 的 RGB 线性插值。
+    /// Color.mix(with:by:) 的兼容封装：iOS 18+ 用系统实现；iOS 16/17 回退 UIColor 的 RGB 线性插值。
     nonisolated func mixed(with other: Color, by amount: Double) -> Color {
         if #available(iOS 18.0, *) {
             return mix(with: other, by: amount)

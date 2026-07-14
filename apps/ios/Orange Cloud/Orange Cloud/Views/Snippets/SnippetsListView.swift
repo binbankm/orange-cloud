@@ -9,18 +9,19 @@
 import SwiftUI
 
 struct SnippetsListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let zoneName: String
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: SnippetsViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: SnippetsViewModel
     @State private var showDenied = false
     @State private var showEditor = false
     @State private var searchText = ""
 
     init(zoneId: String, zoneName: String, session: SessionStore) {
         self.zoneName = zoneName
-        _viewModel = State(initialValue: SnippetsViewModel(service: session.snippetService, zoneId: zoneId))
+        _viewModel = StateObject(wrappedValue: SnippetsViewModel(service: session.snippetService, zoneId: zoneId))
     }
 
     private var canWrite: Bool { auth.hasScope("snippets.write") }
@@ -31,16 +32,18 @@ struct SnippetsListView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.isLoading && !viewModel.loaded {
                 SkeletonList(rows: 5, icon: .none, trailing: true)
             } else if viewModel.snippets.isEmpty {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("还没有 Snippet", systemImage: "curlybraces")
                 } description: {
                     Text(canWrite
-                         ? String(localized: "Snippets 是 Cloudflare Pro 及以上套餐的边缘 JS 能力。点击右上角 + 创建第一个。")
-                         : String(localized: "Snippets 需要 Cloudflare Pro 及以上套餐，且当前授权未包含编辑权限。"))
+                         ? AppLocalization.string(localized: "Snippets 是 Cloudflare Pro 及以上套餐的边缘 JS 能力。点击右上角 + 创建第一个。")
+                         : AppLocalization.string(localized: "Snippets 需要 Cloudflare Pro 及以上套餐，且当前授权未包含编辑权限。"))
                 } actions: {
                     if canWrite {
                         Button("新建 Snippet") { showEditor = true }
@@ -50,7 +53,7 @@ struct SnippetsListView: View {
                     }
                 }
             } else if filteredSnippets.isEmpty {
-                ContentUnavailableView.search(text: searchText)
+                OCContentUnavailableView.search(text: searchText)
             } else {
                 List {
                     Section {
@@ -66,8 +69,8 @@ struct SnippetsListView: View {
                         }
                     } footer: {
                         Text(canWrite
-                             ? String(localized: "每个 Snippet 需配触发规则才会执行，进入详情可管理代码与规则。")
-                             : String(localized: "当前授权仅限读取（snippets.read），无法新建或修改。"))
+                             ? AppLocalization.string(localized: "每个 Snippet 需配触发规则才会执行，进入详情可管理代码与规则。")
+                             : AppLocalization.string(localized: "当前授权仅限读取（snippets.read），无法新建或修改。"))
                     }
                     .glassRow()
                 }
@@ -76,7 +79,7 @@ struct SnippetsListView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("Snippets")
+        .ocNavigationTitle("Snippets")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "搜索 Snippet")
         .toolbar {
@@ -109,11 +112,14 @@ struct SnippetsListView: View {
 // MARK: - 列表行
 
 private struct SnippetRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let snippet: Snippet
     let ruleCount: Int
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         HStack(spacing: 12) {
             TintIcon(systemImage: "curlybraces", color: .ocOrange)
             VStack(alignment: .leading, spacing: 2) {
@@ -121,8 +127,8 @@ private struct SnippetRow: View {
                     .font(.callout.weight(.semibold))
                     .lineLimit(1)
                 Text(ruleCount == 0
-                     ? String(localized: "未配置触发规则")
-                     : String(localized: "\(ruleCount) 条触发规则"))
+                     ? AppLocalization.string(localized: "未配置触发规则")
+                     : AppLocalization.string(localized: "\(ruleCount) 条触发规则"))
                     .font(.caption)
                     .foregroundStyle(ruleCount == 0 ? Color.orange : Color.secondary)
             }

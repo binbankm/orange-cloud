@@ -6,18 +6,17 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class PagesProjectListViewModel {
+final class PagesProjectListViewModel: ObservableObject {
 
-    private(set) var projects: [PagesProject] = []
-    var isLoading = false
-    var loaded = false
-    var error: String?
-    var isCreating = false
-    var didCreate = false      // sensoryFeedback 触发器
+    @Published private(set) var projects: [PagesProject] = []
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var error: String?
+    @Published var isCreating = false
+    @Published var didCreate = false
 
     private let service: PagesService
 
@@ -60,17 +59,16 @@ final class PagesProjectListViewModel {
     }
 }
 
-@Observable
 @MainActor
-final class PagesProjectDetailViewModel {
+final class PagesProjectDetailViewModel: ObservableObject {
 
-    var project: PagesProject
-    private(set) var deployments: [PagesDeployment] = []
-    var isLoadingDeployments = false
-    var deploymentsLoaded = false
-    var isMutating = false
-    var error: String?
-    var didMutate = false      // sensoryFeedback 触发器
+    @Published var project: PagesProject
+    @Published private(set) var deployments: [PagesDeployment] = []
+    @Published var isLoadingDeployments = false
+    @Published var deploymentsLoaded = false
+    @Published var isMutating = false
+    @Published var error: String?
+    @Published var didMutate = false
 
     private let service: PagesService
     let accountId: String
@@ -188,9 +186,8 @@ final class PagesProjectDetailViewModel {
 
 // MARK: - 自定义域名
 
-@Observable
 @MainActor
-final class PagesDomainsViewModel {
+final class PagesDomainsViewModel: ObservableObject {
 
     /// 某个域名的 DNS 解析状态（zone 在当前账号内时才可查/可写）
     enum DNSState: Equatable {
@@ -201,13 +198,13 @@ final class PagesDomainsViewModel {
         case unknown              // 无 dns.read 或查询失败
     }
 
-    private(set) var domains: [PagesDomain] = []
-    private(set) var dnsStates: [String: DNSState] = [:]   // key = 域名
-    var isLoading = false
-    var loaded = false
-    var isMutating = false
-    var error: String?
-    var didMutate = false      // sensoryFeedback 触发器
+    @Published private(set) var domains: [PagesDomain] = []
+    @Published private(set) var dnsStates: [String: DNSState] = [:]
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var isMutating = false
+    @Published var error: String?
+    @Published var didMutate = false
 
     private let service: PagesService
     private let dnsService: DNSService
@@ -359,9 +356,8 @@ final class PagesDomainsViewModel {
 
 // MARK: - 直接上传部署
 
-@Observable
 @MainActor
-final class PagesDeployViewModel {
+final class PagesDeployViewModel: ObservableObject {
 
     enum Phase: Equatable {
         case idle, hashing, uploading, creating, done, failed
@@ -370,10 +366,10 @@ final class PagesDeployViewModel {
     /// Pages 单文件上限 25 MiB
     static let maxFileBytes = 25 * 1024 * 1024
 
-    var phase: Phase = .idle
-    var uploadedCount = 0
-    var totalToUpload = 0
-    var error: String?
+    @Published var phase: Phase = .idle
+    @Published var uploadedCount = 0
+    @Published var totalToUpload = 0
+    @Published var error: String?
 
     var isDeploying: Bool { phase == .hashing || phase == .uploading || phase == .creating }
 
@@ -396,7 +392,7 @@ final class PagesDeployViewModel {
         phase = .hashing
 
         if let big = files.first(where: { $0.data.count > Self.maxFileBytes }) {
-            error = String(localized: "文件 \(big.path) 超过 25 MB，超出 Pages 单文件上限")
+            error = AppLocalization.string(localized: "文件 \(big.path) 超过 25 MB，超出 Pages 单文件上限")
             phase = .failed
             return nil
         }

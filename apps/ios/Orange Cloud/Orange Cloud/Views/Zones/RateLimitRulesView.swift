@@ -9,20 +9,24 @@
 import SwiftUI
 
 struct RateLimitRulesView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let zoneId: String
     let zoneName: String
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
 
-    @State private var vm: RateLimitViewModel?
+    @StateObject private var vmStore = OptionalObservableObjectStore()
+    private var vm: RateLimitViewModel? { vmStore.value(as: RateLimitViewModel.self) }
     @State private var editingRule: RateLimitRule?
     @State private var showNewRule = false
 
     private var canEdit: Bool { auth.hasScope("zone-waf.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if let vm {
                 content(vm)
@@ -31,12 +35,12 @@ struct RateLimitRulesView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("Rate Limiting")
+        .ocNavigationTitle("Rate Limiting")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             guard vm == nil else { return }
             let model = RateLimitViewModel(service: session.rateLimitService, zoneId: zoneId)
-            vm = model
+            vmStore.set(model)
             await model.load()
         }
     }
@@ -46,10 +50,10 @@ struct RateLimitRulesView: View {
         if vm.isLoading && !vm.loaded {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if vm.rules.isEmpty {
-            ContentUnavailableView {
+            OCContentUnavailableView {
                 Label("还没有限速规则", systemImage: "gauge.with.dots.needle.bottom.50percent")
             } description: {
-                Text(vm.error ?? String(localized: "限速规则可在单位时间内限制来自同一访客的请求次数。"))
+                Text(vm.error ?? AppLocalization.string(localized: "限速规则可在单位时间内限制来自同一访客的请求次数。"))
             } actions: {
                 if canEdit {
                     Button {
@@ -99,7 +103,7 @@ struct RateLimitRulesView: View {
             TintIcon(systemImage: "gauge.with.dots.needle.bottom.50percent",
                      color: rule.isEnabled ? .ocOrange : .gray)
             VStack(alignment: .leading, spacing: 3) {
-                Text(rule.description?.nilIfBlank ?? rule.expression?.nilIfBlank ?? String(localized: "限速规则"))
+                Text(rule.description?.nilIfBlank ?? rule.expression?.nilIfBlank ?? AppLocalization.string(localized: "限速规则"))
                     .font(.callout)
                     .lineLimit(1)
                 Text(thresholdSummary(rule))
@@ -131,9 +135,9 @@ struct RateLimitRulesView: View {
     private func thresholdSummary(_ rule: RateLimitRule) -> String {
         let reqs = rule.ratelimit?.requestsPerPeriod ?? 0
         let period = rule.ratelimit?.period ?? 0
-        let periodLabel = RateLimitPeriod(rawValue: period)?.label ?? String(localized: "\(period) 秒")
+        let periodLabel = RateLimitPeriod(rawValue: period)?.label ?? AppLocalization.string(localized: "\(period) 秒")
         let action = RateLimitAction(rawValue: rule.action ?? "")?.label ?? (rule.action ?? "")
-        return String(localized: "\(reqs) 次 / \(periodLabel) → \(action)")
+        return AppLocalization.string(localized: "\(reqs) 次 / \(periodLabel) → \(action)")
     }
 
     private func editorSheet(_ vm: RateLimitViewModel, rule: RateLimitRule?) -> some View {
@@ -146,6 +150,7 @@ struct RateLimitRulesView: View {
 // MARK: - 编辑器
 
 private struct RateLimitEditorSheet: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let rule: RateLimitRule?
     let onSave: (_ create: RateLimitRuleCreate) async -> Void
@@ -168,10 +173,12 @@ private struct RateLimitEditorSheet: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
-                    TextField(String(localized: "名称（可选）"), text: $description)
+                    TextField(AppLocalization.string(localized: "名称（可选）"), text: $description)
                 } header: {
                     Text("名称")
                 }
@@ -219,7 +226,7 @@ private struct RateLimitEditorSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background { SkyBackground() }
-            .navigationTitle(rule == nil ? String(localized: "新建限速规则") : String(localized: "编辑限速规则"))
+            .navigationTitle(rule == nil ? AppLocalization.string(localized: "新建限速规则") : AppLocalization.string(localized: "编辑限速规则"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

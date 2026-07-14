@@ -9,11 +9,13 @@
 import SwiftUI
 
 struct QueuesView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var vm: QueuesViewModel?
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var vmStore = OptionalObservableObjectStore()
+    private var vm: QueuesViewModel? { vmStore.value(as: QueuesViewModel.self) }
     @State private var showCreate = false
     @State private var detailTarget: CFQueue?
     @State private var deleteTarget: CFQueue?
@@ -22,16 +24,18 @@ struct QueuesView: View {
     private var canWrite: Bool { auth.hasScope("queues.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if let vm { content(vm) } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
         }
         .background { SkyBackground() }
-        .navigationTitle("Queues")
+        .ocNavigationTitle("Queues")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if vm != nil {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("新建队列", systemImage: "plus") {
+                    Button(AppLocalization.string(localized: "新建队列"), systemImage: "plus") {
                         if canWrite { showCreate = true } else { writeDenied = true }
                     }
                 }
@@ -43,27 +47,27 @@ struct QueuesView: View {
         .sheet(item: $detailTarget) { queue in
             if let vm { QueueDetailSheet(viewModel: vm, queueId: queue.queueId) }
         }
-        .alert("权限不足", isPresented: $writeDenied) {
-            Button("好", role: .cancel) {}
+        .alert(AppLocalization.string(localized: "权限不足"), isPresented: $writeDenied) {
+            Button(AppLocalization.string(localized: "好"), role: .cancel) {}
         } message: {
-            Text("当前授权未包含 Queues 写权限（queues.write）。\n请在设置中退出登录后重新授权以启用此功能。")
+            Text.ocLocalized("当前授权未包含 Queues 写权限（queues.write）。\n请在设置中退出登录后重新授权以启用此功能。")
         }
         .confirmationDialog(
-            deleteTarget.map { String(localized: "删除队列「\($0.name)」？") } ?? "",
+            deleteTarget.map { AppLocalization.string(localized: "删除队列「\($0.name)」？") } ?? "",
             isPresented: Binding(get: { deleteTarget != nil }, set: { if !$0 { deleteTarget = nil } }),
             titleVisibility: .visible
         ) {
-            Button("删除", role: .destructive) {
+            Button(AppLocalization.string(localized: "删除"), role: .destructive) {
                 if let q = deleteTarget, let vm { Task { await vm.delete(q) } }
             }
         } message: {
-            Text("删除后该队列及其未消费消息将被移除，不可撤销。")
+            Text.ocLocalized("删除后该队列及其未消费消息将被移除，不可撤销。")
         }
         .task {
             await session.ensureAccounts()
             guard vm == nil else { return }
             let model = QueuesViewModel(service: session.queueService, accountId: session.selectedAccount?.id)
-            vm = model
+            vmStore.set(model)
             await model.load()
         }
     }
@@ -73,13 +77,13 @@ struct QueuesView: View {
         if vm.isLoading && !vm.loaded {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if vm.queues.isEmpty {
-            ContentUnavailableView {
-                Label("没有队列", systemImage: "tray.2")
+            OCContentUnavailableView {
+                Label(AppLocalization.string(localized: "没有队列"), systemImage: "tray.2")
             } description: {
-                Text(vm.error ?? String(localized: "该账号下还没有 Queue。"))
+                Text(vm.error ?? AppLocalization.string(localized: "该账号下还没有 Queue。"))
             } actions: {
                 if canWrite {
-                    Button("新建队列") { showCreate = true }
+                    Button(AppLocalization.string(localized: "新建队列")) { showCreate = true }
                         .buttonStyle(.borderedProminent).tint(Color.ocOrangePressed).fontWeight(.bold)
                 }
             }
@@ -94,36 +98,39 @@ struct QueuesView: View {
                         .swipeActions(edge: .trailing) {
                             if canWrite {
                                 Button(role: .destructive) { deleteTarget = queue } label: {
-                                    Label("删除", systemImage: "trash")
+                                    Label(AppLocalization.string(localized: "删除"), systemImage: "trash")
                                 }
                             }
                         }
                     }
                 } footer: {
-                    Text("点按查看详情与管理 · 生产者 / 消费者绑定在 Worker 中配置。")
+                    Text.ocLocalized("点按查看详情与管理 · 生产者 / 消费者绑定在 Worker 中配置。")
                 }
                 .glassRow()
             }
             .daybreakList()
             .refreshable { await vm.load() }
-            .sensoryFeedback(.success, trigger: vm.didChange)
+            .ocSensoryFeedback(.success, trigger: vm.didChange)
         }
     }
 }
 
 private struct QueueRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let queue: CFQueue
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         HStack {
             VStack(alignment: .leading, spacing: 3) {
                 Text(queue.name).font(.callout.weight(.semibold)).lineLimit(1).foregroundStyle(.primary)
-                Text("\(queue.producers?.count ?? 0) 生产者 · \(queue.consumers?.count ?? 0) 消费者")
+                Text.ocLocalized("\(queue.producers?.count ?? 0) 生产者 · \(queue.consumers?.count ?? 0) 消费者")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             if queue.settings?.deliveryPaused == true {
-                Text("已暂停").font(.caption2.weight(.semibold))
+                Text.ocLocalized("已暂停").font(.caption2.weight(.semibold))
                     .foregroundStyle(Color.ocOrangeText)
                     .padding(.horizontal, 6).padding(.vertical, 2)
                     .background(Color.ocOrange.opacity(0.14), in: Capsule())
@@ -138,11 +145,12 @@ private struct QueueRow: View {
 // MARK: - 详情管理 sheet
 
 private struct QueueDetailSheet: View {
-    let viewModel: QueuesViewModel
+    @EnvironmentObject private var preferences: AppPreferencesStore
+    @ObservedObject var viewModel: QueuesViewModel
     let queueId: String
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
     @State private var showRename = false
     @State private var showSettings = false
     @State private var showPurge = false
@@ -153,23 +161,25 @@ private struct QueueDetailSheet: View {
     private var isPaused: Bool { queue?.settings?.deliveryPaused ?? false }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Group {
                 if let queue { detail(queue) } else { ProgressView() }
             }
             .background { SkyBackground() }
-            .navigationTitle(queue?.name ?? String(localized: "队列"))
+            .navigationTitle(queue?.name ?? AppLocalization.string(localized: "队列"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(AppLocalization.string(localized: "完成")) { dismiss() } }
                 if canWrite {
                     ToolbarItem(placement: .topBarLeading) {
                         Menu {
-                            Button("重命名", systemImage: "pencil") { showRename = true }
-                            Button("编辑设置", systemImage: "slider.horizontal.3") { showSettings = true }
-                            Button("清空消息", systemImage: "trash.slash", role: .destructive) { showPurge = true }
+                            Button(AppLocalization.string(localized: "重命名"), systemImage: "pencil") { showRename = true }
+                            Button(AppLocalization.string(localized: "编辑设置"), systemImage: "slider.horizontal.3") { showSettings = true }
+                            Button(AppLocalization.string(localized: "清空消息"), systemImage: "trash.slash", role: .destructive) { showPurge = true }
                             Divider()
-                            Button("删除队列", systemImage: "trash", role: .destructive) { showDelete = true }
+                            Button(AppLocalization.string(localized: "删除队列"), systemImage: "trash", role: .destructive) { showDelete = true }
                         } label: {
                             Image(systemName: "ellipsis.circle")
                         }
@@ -183,29 +193,29 @@ private struct QueueDetailSheet: View {
                 if let queue { QueueSettingsSheet(viewModel: viewModel, queueId: queueId, settings: queue.settings) }
             }
             .confirmationDialog(
-                String(localized: "清空队列全部消息？"),
+                AppLocalization.string(localized: "清空队列全部消息？"),
                 isPresented: $showPurge, titleVisibility: .visible
             ) {
-                Button("清空消息", role: .destructive) {
+                Button(AppLocalization.string(localized: "清空消息"), role: .destructive) {
                     Task { await viewModel.purge(queueId: queueId) }
                 }
             } message: {
-                Text("将永久删除该队列中所有未消费的消息，不可撤销。队列本身保留。")
+                Text.ocLocalized("将永久删除该队列中所有未消费的消息，不可撤销。队列本身保留。")
             }
             .confirmationDialog(
-                queue.map { String(localized: "删除队列「\($0.name)」？") } ?? "",
+                queue.map { AppLocalization.string(localized: "删除队列「\($0.name)」？") } ?? "",
                 isPresented: $showDelete, titleVisibility: .visible
             ) {
-                Button("删除", role: .destructive) {
+                Button(AppLocalization.string(localized: "删除"), role: .destructive) {
                     if let queue {
                         Task { await viewModel.delete(queue); dismiss() }
                     }
                 }
             } message: {
-                Text("删除后该队列及其未消费消息将被移除，不可撤销。")
+                Text.ocLocalized("删除后该队列及其未消费消息将被移除，不可撤销。")
             }
             // 队列被删（列表里没了）时自动收起
-            .onChange(of: viewModel.queues.contains { $0.queueId == queueId }) { _, stillThere in
+            .onChange(of: viewModel.queues.contains { $0.queueId == queueId }) { stillThere in
                 if !stillThere { dismiss() }
             }
         }
@@ -215,7 +225,7 @@ private struct QueueDetailSheet: View {
     private func detail(_ queue: CFQueue) -> some View {
         List {
             Section {
-                LabeledContent("状态") {
+                LabeledContent(AppLocalization.string(localized: "状态")) {
                     Text(isPaused ? "投递已暂停" : "投递中")
                         .foregroundStyle(isPaused ? Color.ocOrangeText : .secondary)
                 }
@@ -229,17 +239,17 @@ private struct QueueDetailSheet: View {
                     .disabled(viewModel.isSaving)
                 }
             } header: {
-                Text("投递")
+                Text.ocLocalized("投递")
             } footer: {
-                Text("暂停后队列仍会接收消息，但暂停向消费者投递。")
+                Text.ocLocalized("暂停后队列仍会接收消息，但暂停向消费者投递。")
             }
             .glassRow()
 
-            Section("设置") {
-                LabeledContent("消息保留期", value: Self.formatSeconds(queue.settings?.messageRetentionPeriod))
-                LabeledContent("投递延迟", value: Self.formatSeconds(queue.settings?.deliveryDelay))
+            Section(AppLocalization.string(localized: "设置")) {
+                LabeledContent(AppLocalization.string(localized: "消息保留期"), value: Self.formatSeconds(queue.settings?.messageRetentionPeriod))
+                LabeledContent(AppLocalization.string(localized: "投递延迟"), value: Self.formatSeconds(queue.settings?.deliveryDelay))
                 if let created = queue.createdOn, let date = WorkerScript.parseDate(created) {
-                    LabeledContent("创建于", value: date.formatted(date: .abbreviated, time: .shortened))
+                    LabeledContent(AppLocalization.string(localized: "创建于"), value: AppLocalization.dateTime(date, timeStyle: .short))
                 }
             }
             .glassRow()
@@ -247,13 +257,13 @@ private struct QueueDetailSheet: View {
             Section {
                 if let producers = queue.producers, !producers.isEmpty {
                     ForEach(Array(producers.enumerated()), id: \.offset) { _, p in
-                        Text(p.script ?? p.type ?? String(localized: "未知")).font(.callout.monospaced()).lineLimit(1)
+                        Text(p.script ?? p.type ?? AppLocalization.string(localized: "未知")).font(.callout.monospaced()).lineLimit(1)
                     }
                 } else {
-                    Text("无生产者").foregroundStyle(.secondary).font(.callout)
+                    Text.ocLocalized("无生产者").foregroundStyle(.secondary).font(.callout)
                 }
             } header: {
-                Text("生产者（\(queue.producersTotalCount ?? queue.producers?.count ?? 0)）")
+                Text.ocLocalized("生产者（\(queue.producersTotalCount ?? queue.producers?.count ?? 0)）")
             }
             .glassRow()
 
@@ -263,12 +273,12 @@ private struct QueueDetailSheet: View {
                         ConsumerRow(consumer: c)
                     }
                 } else {
-                    Text("无消费者").foregroundStyle(.secondary).font(.callout)
+                    Text.ocLocalized("无消费者").foregroundStyle(.secondary).font(.callout)
                 }
             } header: {
-                Text("消费者（\(queue.consumersTotalCount ?? queue.consumers?.count ?? 0)）")
+                Text.ocLocalized("消费者（\(queue.consumersTotalCount ?? queue.consumers?.count ?? 0)）")
             } footer: {
-                Text("消费者绑定与批处理参数在 Worker 中配置。")
+                Text.ocLocalized("消费者绑定与批处理参数在 Worker 中配置。")
             }
             .glassRow()
 
@@ -282,33 +292,36 @@ private struct QueueDetailSheet: View {
     /// 秒 → 可读时长（如 345600 → 「4 天」）；nil → 「—」
     static func formatSeconds(_ seconds: Int?) -> String {
         guard let s = seconds else { return "—" }
-        if s == 0 { return String(localized: "无") }
-        if s % 86400 == 0 { return String(localized: "\(s / 86400) 天") }
-        if s % 3600 == 0 { return String(localized: "\(s / 3600) 小时") }
-        if s % 60 == 0 { return String(localized: "\(s / 60) 分钟") }
-        return String(localized: "\(s) 秒")
+        if s == 0 { return AppLocalization.string(localized: "无") }
+        if s % 86400 == 0 { return AppLocalization.string(localized: "\(s / 86400) 天") }
+        if s % 3600 == 0 { return AppLocalization.string(localized: "\(s / 3600) 小时") }
+        if s % 60 == 0 { return AppLocalization.string(localized: "\(s / 60) 分钟") }
+        return AppLocalization.string(localized: "\(s) 秒")
     }
 }
 
 private struct ConsumerRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let consumer: CFQueueEndpoint
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         VStack(alignment: .leading, spacing: 3) {
-            Text(consumer.script ?? consumer.type ?? String(localized: "未知"))
+            Text(consumer.script ?? consumer.type ?? AppLocalization.string(localized: "未知"))
                 .font(.callout.monospaced()).lineLimit(1)
             if let s = consumer.settings {
                 let parts = [
-                    s.batchSize.map { String(localized: "批 \($0)") },
-                    s.maxRetries.map { String(localized: "重试 \($0)") },
-                    s.maxConcurrency.map { String(localized: "并发 \($0)") }
+                    s.batchSize.map { AppLocalization.string(localized: "批 \($0)") },
+                    s.maxRetries.map { AppLocalization.string(localized: "重试 \($0)") },
+                    s.maxConcurrency.map { AppLocalization.string(localized: "并发 \($0)") }
                 ].compactMap { $0 }
                 if !parts.isEmpty {
                     Text(parts.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
                 }
             }
             if let dlq = consumer.deadLetterQueue {
-                Text("死信队列：\(dlq)").font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
+                Text.ocLocalized("死信队列：\(dlq)").font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
             }
         }
         .padding(.vertical, 2)
@@ -318,7 +331,8 @@ private struct ConsumerRow: View {
 // MARK: - 重命名
 
 private struct QueueRenameSheet: View {
-    let viewModel: QueuesViewModel
+    @EnvironmentObject private var preferences: AppPreferencesStore
+    @ObservedObject var viewModel: QueuesViewModel
     let queueId: String
     let currentName: String
 
@@ -326,7 +340,7 @@ private struct QueueRenameSheet: View {
     @State private var name: String
 
     init(viewModel: QueuesViewModel, queueId: String, currentName: String) {
-        self.viewModel = viewModel
+        _viewModel = ObservedObject(wrappedValue: viewModel)
         self.queueId = queueId
         self.currentName = currentName
         _name = State(initialValue: currentName)
@@ -336,28 +350,30 @@ private struct QueueRenameSheet: View {
     private var canSave: Bool { !trimmed.isEmpty && trimmed != currentName && !viewModel.isSaving }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
-                    TextField("队列名称", text: $name)
+                    TextField(AppLocalization.string(localized: "队列名称"), text: $name)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                         .font(.callout.monospaced())
                 } footer: {
-                    Text("小写字母 / 数字 / 连字符。")
+                    Text.ocLocalized("小写字母 / 数字 / 连字符。")
                 }
                 if let error = viewModel.error {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("重命名队列")
+            .ocNavigationTitle("重命名队列")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(AppLocalization.string(localized: "取消")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         Task { if await viewModel.update(queueId: queueId, queueName: trimmed) { dismiss() } }
                     } label: {
-                        if viewModel.isSaving { ProgressView() } else { Text("保存").fontWeight(.semibold) }
+                        if viewModel.isSaving { ProgressView() } else { Text.ocLocalized("保存").fontWeight(.semibold) }
                     }
                     .disabled(!canSave)
                 }
@@ -371,7 +387,8 @@ private struct QueueRenameSheet: View {
 // MARK: - 编辑设置（保留期 / 投递延迟）
 
 private struct QueueSettingsSheet: View {
-    let viewModel: QueuesViewModel
+    @EnvironmentObject private var preferences: AppPreferencesStore
+    @ObservedObject var viewModel: QueuesViewModel
     let queueId: String
 
     @Environment(\.dismiss) private var dismiss
@@ -379,7 +396,7 @@ private struct QueueSettingsSheet: View {
     @State private var delayText: String
 
     init(viewModel: QueuesViewModel, queueId: String, settings: CFQueueSettings?) {
-        self.viewModel = viewModel
+        _viewModel = ObservedObject(wrappedValue: viewModel)
         self.queueId = queueId
         _retentionText = State(initialValue: settings?.messageRetentionPeriod.map(String.init) ?? "345600")
         _delayText = State(initialValue: settings?.deliveryDelay.map(String.init) ?? "0")
@@ -394,26 +411,28 @@ private struct QueueSettingsSheet: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
-                    TextField("消息保留期（秒）", text: $retentionText).keyboardType(.numberPad)
+                    TextField(AppLocalization.string(localized: "消息保留期（秒）"), text: $retentionText).keyboardType(.numberPad)
                 } footer: {
-                    Text("60 秒 – 14 天（1209600 秒）。当前约 \(QueueDetailSheet.formatSeconds(retention))。")
+                    Text.ocLocalized("60 秒 – 14 天（1209600 秒）。当前约 \(QueueDetailSheet.formatSeconds(retention))。")
                 }
                 Section {
-                    TextField("投递延迟（秒）", text: $delayText).keyboardType(.numberPad)
+                    TextField(AppLocalization.string(localized: "投递延迟（秒）"), text: $delayText).keyboardType(.numberPad)
                 } footer: {
-                    Text("0 – 12 小时（43200 秒）。消息进入队列后延迟多久才投递。")
+                    Text.ocLocalized("0 – 12 小时（43200 秒）。消息进入队列后延迟多久才投递。")
                 }
                 if let error = viewModel.error {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("编辑设置")
+            .ocNavigationTitle("编辑设置")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(AppLocalization.string(localized: "取消")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         guard let r = retention, let d = delay else { return }
@@ -425,7 +444,7 @@ private struct QueueSettingsSheet: View {
                             if ok { dismiss() }
                         }
                     } label: {
-                        if viewModel.isSaving { ProgressView() } else { Text("保存").fontWeight(.semibold) }
+                        if viewModel.isSaving { ProgressView() } else { Text.ocLocalized("保存").fontWeight(.semibold) }
                     }
                     .disabled(!canSave)
                 }
@@ -437,7 +456,8 @@ private struct QueueSettingsSheet: View {
 }
 
 private struct QueueCreateView: View {
-    let viewModel: QueuesViewModel
+    @EnvironmentObject private var preferences: AppPreferencesStore
+    @ObservedObject var viewModel: QueuesViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
 
@@ -445,28 +465,30 @@ private struct QueueCreateView: View {
     private var canSave: Bool { !trimmed.isEmpty && !viewModel.isSaving }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
-                    TextField("队列名称", text: $name)
+                    TextField(AppLocalization.string(localized: "队列名称"), text: $name)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                         .font(.callout.monospaced())
                 } footer: {
-                    Text("小写字母 / 数字 / 连字符。")
+                    Text.ocLocalized("小写字母 / 数字 / 连字符。")
                 }
                 if let error = viewModel.error {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("新建队列")
+            .ocNavigationTitle("新建队列")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(AppLocalization.string(localized: "取消")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         Task { if await viewModel.create(name: trimmed) { dismiss() } }
                     } label: {
-                        if viewModel.isSaving { ProgressView() } else { Text("创建").fontWeight(.semibold) }
+                        if viewModel.isSaving { ProgressView() } else { Text.ocLocalized("创建").fontWeight(.semibold) }
                     }
                     .disabled(!canSave)
                 }

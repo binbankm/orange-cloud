@@ -9,7 +9,7 @@ import SwiftUI
 
 struct CFTraceToolView: View {
 
-    @State private var vm = CFTraceViewModel()
+    @StateObject private var vm = CFTraceViewModel()
 
     var body: some View {
         ScrollView {
@@ -55,7 +55,7 @@ struct CFTraceToolView: View {
             .padding(OCLayout.pagePadding)
         }
         .background { SkyBackground() }
-        .navigationTitle("CF 数据中心")
+        .ocNavigationTitle("CF 数据中心")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if vm.result == nil && vm.error == nil { await vm.run() }

@@ -6,7 +6,7 @@
 //  按国家/地区打气泡——圆点大小映射请求量，威胁占比高的国家转红。
 //  挂在域名详情页分析区，受 ProFeature.trafficMap 闸门控制（24h 免费、地图整体 Pro）。
 //
-//  基线 iOS 17：MapKit SwiftUI `Map` + `Annotation` 自 iOS 17 起可用，无需 availability 守卫。
+//  基线 iOS 16：使用 `coordinateRegion` + `MapAnnotation` 这一套 iOS 16 可用的 MapKit API。
 //
 
 import SwiftUI
@@ -14,15 +14,13 @@ import MapKit
 
 struct ZoneTrafficMapCard: View {
 
-    let viewModel: ZoneAnalyticsViewModel
+    @ObservedObject var viewModel: ZoneAnalyticsViewModel
 
-    @Environment(EntitlementStore.self) private var entitlements
+    @EnvironmentObject private var entitlements: EntitlementStore
     @State private var paywallPresented = false
-    @State private var camera: MapCameraPosition = .region(
-        MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 25, longitude: 0),
-            span: MKCoordinateSpan(latitudeDelta: 120, longitudeDelta: 200)
-        )
+    @State private var region = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 25, longitude: 0),
+        span: MKCoordinateSpan(latitudeDelta: 120, longitudeDelta: 200)
     )
 
     var body: some View {
@@ -45,7 +43,7 @@ struct ZoneTrafficMapCard: View {
             // 地理数据仅 Pro 拉取，免费层只展示锁定预告
             if entitlements.isPro { await viewModel.loadCountries() }
         }
-        .onChange(of: viewModel.selectedRange) {
+        .onChange(of: viewModel.selectedRange) { _ in
             if entitlements.isPro { Task { await viewModel.loadCountries() } }
         }
     }
@@ -90,20 +88,16 @@ struct ZoneTrafficMapCard: View {
     }
 
     private var map: some View {
-        Map(position: $camera, interactionModes: [.pan, .zoom]) {
-            ForEach(bubbles) { bubble in
-                // 标题留空避免 200+ 国家名在图上堆叠；无障碍标签挂在圆点本身
-                Annotation("", coordinate: bubble.coordinate) {
+        Map(coordinateRegion: $region, interactionModes: [.pan, .zoom], annotationItems: bubbles) { bubble in
+            MapAnnotation(coordinate: bubble.coordinate) {
                     Circle()
                         .fill(bubble.color.opacity(0.55))
                         .overlay(Circle().strokeBorder(bubble.color, lineWidth: 1.5))
                         .frame(width: bubble.diameter, height: bubble.diameter)
                         .accessibilityLabel(bubble.country.displayName)
                         .accessibilityValue(Text("\(bubble.country.requests) 次请求"))
-                }
             }
         }
-        .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
         .frame(height: 240)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(

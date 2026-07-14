@@ -6,19 +6,18 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class ZoneTransformRulesViewModel {
+final class ZoneTransformRulesViewModel: ObservableObject {
 
     /// 按 phase rawValue 存当前 entrypoint ruleset（无规则集的 phase 不入表）
-    private(set) var rulesetByPhase: [String: TransformRuleset] = [:]
-    private(set) var loaded = false
-    var isLoading = false
-    var isSaving = false
-    var togglingRuleId: String?
-    var error: String?
+    @Published private(set) var rulesetByPhase: [String: TransformRuleset] = [:]
+    @Published private(set) var loaded = false
+    @Published var isLoading = false
+    @Published var isSaving = false
+    @Published var togglingRuleId: String?
+    @Published var error: String?
 
     private let service: TransformRuleService
     private let zoneId: String

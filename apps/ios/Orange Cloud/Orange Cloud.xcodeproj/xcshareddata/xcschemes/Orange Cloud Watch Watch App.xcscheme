@@ -17,6 +17,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "E9AD1A6E2FE1B6A80020AAAF"
                BuildableName = "Orange Cloud Watch Watch App.app"
+               BlueprintName = "Orange Cloud Watch Watch App"
                ReferencedContainer = "container:Orange Cloud.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -30,6 +31,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "E9EF3A222FD98F7B007C2377"
                BuildableName = "Orange Cloud.app"
+               BlueprintName = "Orange Cloud"
                ReferencedContainer = "container:Orange Cloud.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -59,6 +61,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "E9AD1A6E2FE1B6A80020AAAF"
             BuildableName = "Orange Cloud Watch Watch App.app"
+            BlueprintName = "Orange Cloud Watch Watch App"
             ReferencedContainer = "container:Orange Cloud.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -75,6 +78,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "E9AD1A6E2FE1B6A80020AAAF"
             BuildableName = "Orange Cloud Watch Watch App.app"
+            BlueprintName = "Orange Cloud Watch Watch App"
             ReferencedContainer = "container:Orange Cloud.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

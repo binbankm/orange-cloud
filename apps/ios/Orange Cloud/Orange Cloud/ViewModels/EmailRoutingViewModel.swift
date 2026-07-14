@@ -6,18 +6,17 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class EmailRoutingViewModel {
+final class EmailRoutingViewModel: ObservableObject {
 
-    private(set) var settings:  EmailRoutingSettings?
-    private(set) var rules:     [EmailRoutingRule] = []
-    private(set) var addresses: [EmailDestinationAddress] = []
-    var isLoading = false
-    var isMutating = false
-    var error: String?
+    @Published private(set) var settings: EmailRoutingSettings?
+    @Published private(set) var rules: [EmailRoutingRule] = []
+    @Published private(set) var addresses: [EmailDestinationAddress] = []
+    @Published var isLoading = false
+    @Published var isMutating = false
+    @Published var error: String?
 
     private let service:   EmailRoutingService
     private let zoneId:    String

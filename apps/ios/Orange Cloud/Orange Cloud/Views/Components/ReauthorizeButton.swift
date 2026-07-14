@@ -9,18 +9,21 @@
 import SwiftUI
 
 struct ReauthorizeButton: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     /// 要重新授权的身份
     let sessionId: UUID
     /// 要补齐的 scope（会与该身份已授权的合并后一起请求）
     let scopes: [String]
-    var title: String = String(localized: "一键重授权")
+    var title: String = AppLocalization.string(localized: "一键重授权")
 
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
     @State private var isWorking = false
     @State private var errorText: String?
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Button {
             isWorking = true
             Task {
@@ -43,7 +46,7 @@ struct ReauthorizeButton: View {
             }
         }
         .disabled(isWorking)
-        .alert(String(localized: "重新授权未完成"), isPresented: .init(
+        .alert(AppLocalization.string(localized: "重新授权未完成"), isPresented: .init(
             get: { errorText != nil },
             set: { if !$0 { errorText = nil } }
         )) {

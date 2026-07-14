@@ -7,7 +7,7 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
 /// SSL/TLS 加密模式（zone setting `ssl` 的取值）
 nonisolated enum SSLMode: String, CaseIterable, Identifiable, Sendable {
@@ -17,19 +17,19 @@ nonisolated enum SSLMode: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .off:      String(localized: "关闭")
-        case .flexible: String(localized: "灵活")
-        case .full:     String(localized: "完全")
-        case .strict:   String(localized: "完全（严格）")
+        case .off:      AppLocalization.string(localized: "关闭")
+        case .flexible: AppLocalization.string(localized: "灵活")
+        case .full:     AppLocalization.string(localized: "完全")
+        case .strict:   AppLocalization.string(localized: "完全（严格）")
         }
     }
 
     var blurb: String {
         switch self {
-        case .off:      String(localized: "不加密访客与 Cloudflare 之间的连接。")
-        case .flexible: String(localized: "访客到 Cloudflare 加密，Cloudflare 到源站不加密。")
-        case .full:     String(localized: "全程加密，但不校验源站证书。")
-        case .strict:   String(localized: "全程加密并校验源站证书，最安全。")
+        case .off:      AppLocalization.string(localized: "不加密访客与 Cloudflare 之间的连接。")
+        case .flexible: AppLocalization.string(localized: "访客到 Cloudflare 加密，Cloudflare 到源站不加密。")
+        case .full:     AppLocalization.string(localized: "全程加密，但不校验源站证书。")
+        case .strict:   AppLocalization.string(localized: "全程加密并校验源站证书，最安全。")
         }
     }
 }
@@ -45,21 +45,20 @@ nonisolated enum MinTLSVersion: String, CaseIterable, Identifiable, Sendable {
     var title: String { "TLS \(rawValue)" }
 }
 
-@Observable
 @MainActor
-final class ZoneSSLViewModel {
+final class ZoneSSLViewModel: ObservableObject {
 
-    private(set) var sslMode: SSLMode = .full
-    private(set) var alwaysUseHTTPS = false
-    private(set) var autoHTTPSRewrites = false
-    private(set) var minTLS: MinTLSVersion = .v1_0
-    private(set) var tls13 = false
+    @Published private(set) var sslMode: SSLMode = .full
+    @Published private(set) var alwaysUseHTTPS = false
+    @Published private(set) var autoHTTPSRewrites = false
+    @Published private(set) var minTLS: MinTLSVersion = .v1_0
+    @Published private(set) var tls13 = false
 
-    private(set) var loaded = false
-    private(set) var isLoading = false
+    @Published private(set) var loaded = false
+    @Published private(set) var isLoading = false
     /// 正在写入的 setting ID（行内 ProgressView / 禁用其它控件）
-    var updating: Set<String> = []
-    var error: String?
+    @Published var updating: Set<String> = []
+    @Published var error: String?
 
     private let service: ZoneSettingsService
     private let zoneId: String

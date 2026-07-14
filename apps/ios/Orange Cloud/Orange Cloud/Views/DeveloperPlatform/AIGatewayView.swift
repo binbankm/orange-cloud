@@ -8,11 +8,13 @@
 import SwiftUI
 
 struct AIGatewayView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var vm: AIGatewayViewModel?
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var vmStore = OptionalObservableObjectStore()
+    private var vm: AIGatewayViewModel? { vmStore.value(as: AIGatewayViewModel.self) }
     @State private var showCreate = false
     @State private var deleteTarget: AIGateway?
     @State private var writeDenied = false
@@ -20,16 +22,18 @@ struct AIGatewayView: View {
     private var canWrite: Bool { auth.hasScope("aig.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if let vm { content(vm) } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
         }
         .background { SkyBackground() }
-        .navigationTitle("AI Gateway")
+        .ocNavigationTitle("AI Gateway")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if vm != nil {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("新建网关", systemImage: "plus") {
+                    Button(AppLocalization.string(localized: "新建网关"), systemImage: "plus") {
                         if canWrite { showCreate = true } else { writeDenied = true }
                     }
                 }
@@ -38,27 +42,27 @@ struct AIGatewayView: View {
         .sheet(isPresented: $showCreate) {
             if let vm { AIGatewayCreateView(viewModel: vm) }
         }
-        .alert("权限不足", isPresented: $writeDenied) {
-            Button("好", role: .cancel) {}
+        .alert(AppLocalization.string(localized: "权限不足"), isPresented: $writeDenied) {
+            Button(AppLocalization.string(localized: "好"), role: .cancel) {}
         } message: {
-            Text("当前授权未包含 AI Gateway 写权限（aig.write）。\n请在设置中退出登录后重新授权以启用此功能。")
+            Text.ocLocalized("当前授权未包含 AI Gateway 写权限（aig.write）。\n请在设置中退出登录后重新授权以启用此功能。")
         }
         .confirmationDialog(
-            deleteTarget.map { String(localized: "删除网关「\($0.id)」？") } ?? "",
+            deleteTarget.map { AppLocalization.string(localized: "删除网关「\($0.id)」？") } ?? "",
             isPresented: Binding(get: { deleteTarget != nil }, set: { if !$0 { deleteTarget = nil } }),
             titleVisibility: .visible
         ) {
-            Button("删除", role: .destructive) {
+            Button(AppLocalization.string(localized: "删除"), role: .destructive) {
                 if let g = deleteTarget, let vm { Task { await vm.delete(g) } }
             }
         } message: {
-            Text("删除后该网关的端点与日志将不可用，不可撤销。")
+            Text.ocLocalized("删除后该网关的端点与日志将不可用，不可撤销。")
         }
         .task {
             await session.ensureAccounts()
             guard vm == nil else { return }
             let model = AIGatewayViewModel(service: session.aiGatewayService, accountId: session.selectedAccount?.id)
-            vm = model
+            vmStore.set(model)
             await model.load()
         }
     }
@@ -68,13 +72,13 @@ struct AIGatewayView: View {
         if vm.isLoading && !vm.loaded {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if vm.gateways.isEmpty {
-            ContentUnavailableView {
-                Label("没有 AI Gateway", systemImage: "brain.head.profile")
+            OCContentUnavailableView {
+                Label(AppLocalization.string(localized: "没有 AI Gateway"), systemImage: "brain.head.profile")
             } description: {
-                Text(vm.error ?? String(localized: "该账号下还没有 AI Gateway。"))
+                Text(vm.error ?? AppLocalization.string(localized: "该账号下还没有 AI Gateway。"))
             } actions: {
                 if canWrite {
-                    Button("新建网关") { showCreate = true }
+                    Button(AppLocalization.string(localized: "新建网关")) { showCreate = true }
                         .buttonStyle(.borderedProminent).tint(Color.ocOrangePressed).fontWeight(.bold)
                 }
             }
@@ -90,33 +94,34 @@ struct AIGatewayView: View {
                         .swipeActions(edge: .trailing) {
                             if canWrite {
                                 Button(role: .destructive) { deleteTarget = gateway } label: {
-                                    Label("删除", systemImage: "trash")
+                                    Label(AppLocalization.string(localized: "删除"), systemImage: "trash")
                                 }
                             }
                         }
                     }
                 } footer: {
-                    Text("AI Gateway 为 LLM 调用提供缓存、限速与日志。")
+                    Text.ocLocalized("AI Gateway 为 LLM 调用提供缓存、限速与日志。")
                 }
                 .glassRow()
             }
             .daybreakList()
             .refreshable { await vm.load() }
-            .sensoryFeedback(.success, trigger: vm.didChange)
+            .ocSensoryFeedback(.success, trigger: vm.didChange)
         }
     }
 
     private func subtitle(_ g: AIGateway) -> String {
         var parts: [String] = []
-        if (g.collectLogs ?? false) { parts.append(String(localized: "日志开")) }
-        if let ttl = g.cacheTtl, ttl > 0 { parts.append(String(localized: "缓存 \(ttl)s")) }
-        if let lim = g.rateLimitingLimit, lim > 0 { parts.append(String(localized: "限速 \(lim)")) }
-        return parts.isEmpty ? String(localized: "默认配置") : parts.joined(separator: " · ")
+        if (g.collectLogs ?? false) { parts.append(AppLocalization.string(localized: "日志开")) }
+        if let ttl = g.cacheTtl, ttl > 0 { parts.append(AppLocalization.string(localized: "缓存 \(ttl)s")) }
+        if let lim = g.rateLimitingLimit, lim > 0 { parts.append(AppLocalization.string(localized: "限速 \(lim)")) }
+        return parts.isEmpty ? AppLocalization.string(localized: "默认配置") : parts.joined(separator: " · ")
     }
 }
 
 private struct AIGatewayCreateView: View {
-    let viewModel: AIGatewayViewModel
+    @EnvironmentObject private var preferences: AppPreferencesStore
+    @ObservedObject var viewModel: AIGatewayViewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var gatewayId = ""
@@ -129,43 +134,51 @@ private struct AIGatewayCreateView: View {
     private var canSave: Bool { !trimmedId.isEmpty && !viewModel.isSaving }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
-                    TextField("网关 ID", text: $gatewayId)
+                    TextField(AppLocalization.string(localized: "网关 ID"), text: $gatewayId)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                         .font(.callout.monospaced())
                 } header: {
-                    Text("标识")
+                    Text.ocLocalized("标识")
                 } footer: {
-                    Text("小写字母 / 数字 / 连字符，创建后不可更改。")
+                    Text.ocLocalized("小写字母 / 数字 / 连字符，创建后不可更改。")
                 }
-                Section("日志与缓存") {
-                    Toggle("收集日志", isOn: $collectLogs)
-                    Stepper("缓存 TTL：\(cacheTtl) 秒", value: $cacheTtl, in: 0...86400, step: 60)
+                Section(AppLocalization.string(localized: "日志与缓存")) {
+                    Toggle(AppLocalization.string(localized: "收集日志"), isOn: $collectLogs)
+                    Stepper(value: $cacheTtl, in: 0...86400, step: 60) {
+                        Text.ocLocalized("缓存 TTL：\(cacheTtl) 秒")
+                    }
                 }
                 Section {
-                    Stepper("限速上限：\(rateLimitingLimit == 0 ? String(localized: "不限") : "\(rateLimitingLimit)")",
-                            value: $rateLimitingLimit, in: 0...100000, step: 10)
-                    Stepper("限速窗口：\(rateLimitingInterval) 秒", value: $rateLimitingInterval, in: 1...3600, step: 10)
+                    Stepper(value: $rateLimitingLimit, in: 0...100000, step: 10) {
+                        let limit = rateLimitingLimit == 0 ? AppLocalization.string(localized: "不限") : String(rateLimitingLimit)
+                        Text.ocLocalized("限速上限：\(limit)")
+                    }
+                    Stepper(value: $rateLimitingInterval, in: 1...3600, step: 10) {
+                        Text.ocLocalized("限速窗口：\(rateLimitingInterval) 秒")
+                    }
                 } header: {
-                    Text("限速")
+                    Text.ocLocalized("限速")
                 } footer: {
-                    Text("上限为 0 表示不限速。")
+                    Text.ocLocalized("上限为 0 表示不限速。")
                 }
                 if let error = viewModel.error {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("新建网关")
+            .ocNavigationTitle("新建网关")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(AppLocalization.string(localized: "取消")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         Task { await save() }
                     } label: {
-                        if viewModel.isSaving { ProgressView() } else { Text("创建").fontWeight(.semibold) }
+                        if viewModel.isSaving { ProgressView() } else { Text.ocLocalized("创建").fontWeight(.semibold) }
                     }
                     .disabled(!canSave)
                 }

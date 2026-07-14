@@ -6,19 +6,18 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class WorkerMetricsViewModel {
+final class WorkerMetricsViewModel: ObservableObject {
 
-    var range: AnalyticsTimeRange = .last24h
-    private(set) var metrics: WorkerMetrics?
-    private(set) var series: [WorkerSeriesPoint] = []
-    var isLoading = false
-    var error: String?
+    @Published var range: AnalyticsTimeRange = .last24h
+    @Published private(set) var metrics: WorkerMetrics?
+    @Published private(set) var series: [WorkerSeriesPoint] = []
+    @Published var isLoading = false
+    @Published var error: String?
     /// 账户级数据集未授权（免费账号）：视图显示「无账户级数据权限」而非报错
-    private(set) var accountAnalyticsUnavailable = false
+    @Published private(set) var accountAnalyticsUnavailable = false
 
     private var cache: [AnalyticsTimeRange: (metrics: WorkerMetrics, series: [WorkerSeriesPoint])] = [:]
     private let analyticsService: AnalyticsService

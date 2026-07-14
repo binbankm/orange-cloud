@@ -9,15 +9,16 @@
 import SwiftUI
 
 struct ZoneSSLCertsView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: ZoneSSLCertsViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: ZoneSSLCertsViewModel
     @State private var showDenied = false
     @State private var pendingDelete: SSLCertificatePack?
     @State private var pendingUniversalOff = false
 
     init(zoneId: String, session: SessionStore) {
-        _viewModel = State(initialValue: ZoneSSLCertsViewModel(
+        _viewModel = StateObject(wrappedValue: ZoneSSLCertsViewModel(
             service: session.sslCertificateService, zoneId: zoneId
         ))
     }
@@ -25,6 +26,8 @@ struct ZoneSSLCertsView: View {
     private var canWrite: Bool { auth.hasScope("ssl-and-certificates.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 if viewModel.universalLoaded {
@@ -36,7 +39,7 @@ struct ZoneSSLCertsView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, 40)
                 } else if viewModel.loaded && viewModel.packs.isEmpty {
-                    ContentUnavailableView("暂无证书", systemImage: "checkmark.seal",
+                    OCContentUnavailableView("暂无证书", systemImage: "checkmark.seal",
                         description: Text("此域名暂时没有边缘证书。"))
                         .padding(.top, 30)
                 } else {
@@ -46,7 +49,7 @@ struct ZoneSSLCertsView: View {
             .padding()
         }
         .background { SkyBackground() }
-        .navigationTitle("SSL 证书")
+        .ocNavigationTitle("SSL 证书")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load() }
         .confirmationDialog("关闭 Universal SSL？", isPresented: $pendingUniversalOff, titleVisibility: .visible) {
@@ -106,7 +109,7 @@ struct ZoneSSLCertsView: View {
                 .labelsHidden()
                 .accessibilityLabel(Text(verbatim: "Universal SSL"))
             } else {
-                Text(viewModel.universalEnabled ? String(localized: "开") : String(localized: "关"))
+                Text(viewModel.universalEnabled ? AppLocalization.string(localized: "开") : AppLocalization.string(localized: "关"))
                     .font(.subheadline).foregroundStyle(.secondary)
             }
         }

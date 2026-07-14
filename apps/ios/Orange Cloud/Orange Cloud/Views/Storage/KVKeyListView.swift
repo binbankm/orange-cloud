@@ -9,19 +9,20 @@
 import SwiftUI
 
 struct KVKeyListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let namespace: KVNamespace
 
-    @Environment(SessionStore.self) private var session
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: KVKeyListViewModel
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: KVKeyListViewModel
     @State private var searchText = ""
     @State private var keyToDelete: KVKey?
     @State private var showDenied = false
 
     init(namespace: KVNamespace, session: SessionStore) {
         self.namespace = namespace
-        _viewModel = State(initialValue: KVKeyListViewModel(
+        _viewModel = StateObject(wrappedValue: KVKeyListViewModel(
             service: session.kvService,
             accountId: session.selectedAccount?.id ?? "",
             namespaceId: namespace.id
@@ -36,17 +37,19 @@ struct KVKeyListView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.keys.isEmpty && viewModel.isLoading {
                 SkeletonList(rows: 10, icon: .none)
             } else if viewModel.keys.isEmpty {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("空命名空间", systemImage: "square.grid.2x2")
                 } description: {
                     Text("这个命名空间里还没有键")
                 }
             } else if filteredKeys.isEmpty {
-                ContentUnavailableView.search(text: searchText)
+                OCContentUnavailableView.search(text: searchText)
             } else {
                 keyList
             }
@@ -139,15 +142,16 @@ struct KVKeyListView: View {
 // MARK: - 值查看 / 编辑
 
 struct KVValueView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let namespace: KVNamespace
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: KVValueViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: KVValueViewModel
 
     init(namespace: KVNamespace, kvKey: KVKey, session: SessionStore) {
         self.namespace = namespace
-        _viewModel = State(initialValue: KVValueViewModel(
+        _viewModel = StateObject(wrappedValue: KVValueViewModel(
             service: session.kvService,
             accountId: session.selectedAccount?.id ?? "",
             namespaceId: namespace.id,
@@ -158,11 +162,13 @@ struct KVValueView: View {
     private var canWrite: Bool { auth.hasScope("workers-kv-storage.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.isLoading {
                 valueSkeleton
             } else if viewModel.isBinary {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("二进制数据", systemImage: "doc.zipper")
                 } description: {
                     Text("该值不是 UTF-8 文本（\(Int64(viewModel.byteCount).ocBytes)），暂不支持预览")
@@ -190,7 +196,7 @@ struct KVValueView: View {
             }
         }
         .task { await viewModel.load() }
-        .sensoryFeedback(.success, trigger: viewModel.didSave)
+        .ocSensoryFeedback(.success, trigger: viewModel.didSave)
         .alert("出错了", isPresented: .init(
             get: { viewModel.error != nil },
             set: { if !$0 { viewModel.error = nil } }
@@ -246,7 +252,7 @@ struct KVValueView: View {
             }
 
             Label {
-                Text("\(Int64(viewModel.byteCount).ocBytes)\(canWrite ? "" : String(localized: " · 只读授权"))")
+                Text("\(Int64(viewModel.byteCount).ocBytes)\(canWrite ? "" : AppLocalization.string(localized: " · 只读授权"))")
             } icon: {
                 Image(systemName: canWrite ? "pencil" : "lock")
             }

@@ -54,7 +54,7 @@ struct WorkerService {
         settings: WorkerSettings
     ) async throws {
         guard let module = content.mainModule else {
-            throw APIError.cloudflareError(code: 0, message: String(localized: "无法定位脚本主模块"))
+            throw APIError.cloudflareError(code: 0, message: AppLocalization.string(localized: "无法定位脚本主模块"))
         }
         let metadata = WorkerUploadMetadata(
             mainModule:         content.isModule ? module.name : nil,

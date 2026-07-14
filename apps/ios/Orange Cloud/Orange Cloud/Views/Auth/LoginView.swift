@@ -28,7 +28,7 @@ struct LoginView: View {
                             .font(.system(size: 84))
                             .foregroundStyle(
                                 LinearGradient(
-                                    colors: [Color(red: 1, green: 0.65, blue: 0.31), .ocOrange, .ocOrangePressed],
+                                    colors: [Color.ocOrange.mixed(with: .white, by: 0.35), .ocOrange, .ocOrangePressed],
                                     startPoint: .topLeading, endPoint: .bottomTrailing
                                 )
                             )
@@ -119,5 +119,5 @@ struct LoginView: View {
 
 #Preview {
     LoginView()
-        .environment(AuthManager())
+        .environmentObject(AuthManager())
 }

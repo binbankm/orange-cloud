@@ -9,8 +9,9 @@
 import SwiftUI
 
 struct SnippetEditorView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    let viewModel: SnippetsViewModel
+    @ObservedObject var viewModel: SnippetsViewModel
     /// nil = 新建
     let existing: Snippet?
 
@@ -33,6 +34,8 @@ struct SnippetEditorView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 if let existing {
@@ -79,7 +82,7 @@ struct SnippetEditorView: View {
                     }
                 }
             }
-            .navigationTitle(existing?.snippetName ?? String(localized: "新建 Snippet"))
+            .navigationTitle(existing?.snippetName ?? AppLocalization.string(localized: "新建 Snippet"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

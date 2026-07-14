@@ -6,22 +6,18 @@
 //
 
 import SwiftUI
-import SwiftData
-import TipKit
 import CoreSpotlight
 import ActivityKit
 
 @main
 struct Orange_CloudApp: App {
 
-    @State private var authManager: AuthManager
+    @StateObject private var authManager: AuthManager
+    @StateObject private var preferences = AppPreferencesStore.shared
     @UIApplicationDelegateAdaptor(PushAppDelegate.self) private var pushDelegate
     @Environment(\.scenePhase) private var scenePhase
 
-    @AppStorage(AppAppearance.storageKey) private var appearanceRaw = AppAppearance.system.rawValue
     @AppStorage(AppMotion.storageKey) private var reduceAnimations = false
-
-    let sharedModelContainer = CacheContainer.shared
 
     init() {
         // 最先安装崩溃捕获，让启动期任意一步崩溃都能被记录、随下次反馈带出。
@@ -31,10 +27,10 @@ struct Orange_CloudApp: App {
         MockCloudflare.activateIfRequested()   // 诊断 mock：仅 ORANGE_MOCK=1 时生效
         #endif
         let manager = AuthManager()
-        _authManager = State(initialValue: manager)
+        _authManager = StateObject(wrappedValue: manager)
         CrashReporter.recordBreadcrumb("AppStart auth manager created")
         // 串行预热缓存库实体解析（iOS 17.x 冷启动首次并发 fetch 竞态，Sentry APPLE-IOS-Y）
-        CacheContainer.warmUp()
+        CacheStore.shared.warmUp()
         WhatsNewGate.wasLoggedInAtLaunch = manager.isLoggedIn
         BackgroundRefresh.register(authManager: manager)
         // iOS 26 连续后台任务（R2 大对象 copy/move 续传），须在启动时注册处理器
@@ -47,7 +43,6 @@ struct Orange_CloudApp: App {
         // 须在 CrashReporter.install() 之后，让 Sentry 链式保留我们的崩溃 handler。
         _ = TelemetryStore.shared
         Self.reapOrphanTailActivities()
-        try? Tips.configure()
         AppLog.logLaunch(
             loggedIn: manager.isLoggedIn,
             sessionCount: manager.sessions.count
@@ -58,10 +53,15 @@ struct Orange_CloudApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(authManager)
-                .environment(EntitlementStore.shared)
-                .tint(.ocOrange)   // 全局品牌橙（Cloudflare #F48120）
-                .preferredColorScheme(AppAppearance(rawValue: appearanceRaw)?.colorScheme)
+                .environmentObject(authManager)
+                .environmentObject(preferences)
+                .environmentObject(EntitlementStore.shared)
+                .environmentObject(CacheStore.shared)
+                .background(LocalizedNavigationChrome())
+                .tint(preferences.theme.primary)
+                .preferredColorScheme(preferences.appearance.colorScheme)
+                // 语言选择会改变此环境值；SwiftUI 立即使整棵视图树按新语言重绘，无需重启 App。
+                .environment(\.locale, preferences.language.locale)
                 // 「减少动画」：全局抹掉隐式与 withAnimation 过渡，让界面变化即时生效
                 .transaction { txn in
                     if reduceAnimations {
@@ -73,9 +73,11 @@ struct Orange_CloudApp: App {
                     handleSpotlightTap(activity)
                 }
         }
-        .modelContainer(sharedModelContainer)
-        .onChange(of: scenePhase) {
+        .onChange(of: scenePhase) { _ in
             AppLog.app.info("scenePhase -> \(String(describing: scenePhase))")
+            if scenePhase == .active {
+                preferences.refreshSystemLanguage()
+            }
             if scenePhase == .background {
                 BackgroundRefresh.schedule()
             }
@@ -85,8 +87,10 @@ struct Orange_CloudApp: App {
     /// 收尸：结束上次进程残留的 tail Live Activity。冷启动时没有任何 VM 持有引用，
     /// 屏上若还挂着卡片，必是崩溃 / 强杀遗留的孤儿——逐个 .immediate 结束。
     private static func reapOrphanTailActivities() {
-        for activity in Activity<TailActivityAttributes>.activities {
-            Task { await activity.end(nil, dismissalPolicy: .immediate) }
+        if #available(iOS 16.2, *) {
+            for activity in Activity<TailActivityAttributes>.activities {
+                Task { await activity.end(nil, dismissalPolicy: .immediate) }
+            }
         }
     }
 

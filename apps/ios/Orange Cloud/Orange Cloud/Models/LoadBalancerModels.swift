@@ -188,7 +188,7 @@ nonisolated struct Monitor: Codable, Identifiable, Sendable {
         if type == "http" || type == "https" {
             return "\(method ?? "GET") \(path ?? "/")"
         }
-        return port.map { String(localized: "端口 \($0)") } ?? (type ?? "")
+        return port.map { AppLocalization.string(localized: "端口 \($0)") } ?? (type ?? "")
     }
 }
 
@@ -230,13 +230,13 @@ nonisolated enum LBSteeringPolicy: String, CaseIterable, Identifiable, Sendable 
 
     var label: String {
         switch self {
-        case .off:                      String(localized: "默认（按池顺序故障转移）")
-        case .geo:                      String(localized: "地理位置")
-        case .random:                   String(localized: "随机")
-        case .dynamicLatency:           String(localized: "动态延迟")
-        case .proximity:                String(localized: "就近")
-        case .leastOutstandingRequests: String(localized: "最少未完成请求")
-        case .leastConnections:         String(localized: "最少连接")
+        case .off:                      AppLocalization.string(localized: "默认（按池顺序故障转移）")
+        case .geo:                      AppLocalization.string(localized: "地理位置")
+        case .random:                   AppLocalization.string(localized: "随机")
+        case .dynamicLatency:           AppLocalization.string(localized: "动态延迟")
+        case .proximity:                AppLocalization.string(localized: "就近")
+        case .leastOutstandingRequests: AppLocalization.string(localized: "最少未完成请求")
+        case .leastConnections:         AppLocalization.string(localized: "最少连接")
         }
     }
 }
@@ -250,10 +250,10 @@ nonisolated enum LBSessionAffinity: String, CaseIterable, Identifiable, Sendable
 
     var label: String {
         switch self {
-        case .none:     String(localized: "不启用")
-        case .cookie:   String(localized: "Cookie")
-        case .ipCookie: String(localized: "IP + Cookie")
-        case .header:   String(localized: "请求头")
+        case .none:     AppLocalization.string(localized: "不启用")
+        case .cookie:   AppLocalization.string(localized: "Cookie")
+        case .ipCookie: AppLocalization.string(localized: "IP + Cookie")
+        case .header:   AppLocalization.string(localized: "请求头")
         }
     }
 }

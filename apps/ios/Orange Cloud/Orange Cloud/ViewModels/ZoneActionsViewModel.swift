@@ -6,21 +6,20 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class ZoneActionsViewModel {
+final class ZoneActionsViewModel: ObservableObject {
 
-    private(set) var underAttack = false
-    private(set) var devMode = false
-    private(set) var settingsLoaded = false
+    @Published private(set) var underAttack = false
+    @Published private(set) var devMode = false
+    @Published private(set) var settingsLoaded = false
 
-    var isTogglingUnderAttack = false
-    var isTogglingDevMode = false
-    var isPurging = false
-    var didPurge = false       // sensoryFeedback / 提示触发器
-    var error: String?
+    @Published var isTogglingUnderAttack = false
+    @Published var isTogglingDevMode = false
+    @Published var isPurging = false
+    @Published var didPurge = false
+    @Published var error: String?
 
     private let service: ZoneSettingsService
     private let zoneId: String

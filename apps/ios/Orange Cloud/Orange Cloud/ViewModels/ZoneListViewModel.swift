@@ -6,15 +6,13 @@
 //
 
 import Foundation
-import Observation
-import SwiftData
+import Combine
 
-@Observable
 @MainActor
-final class ZoneListViewModel {
+final class ZoneListViewModel: ObservableObject {
 
-    var isLoading = false
-    var error: String?
+    @Published var isLoading = false
+    @Published var error: String?
 
     private let zoneService: ZoneService
     /// 进行中的加载任务。.task 首屏加载与 .refreshable 下拉刷新都会触发刷新：
@@ -30,9 +28,9 @@ final class ZoneListViewModel {
     }
 
     /// 从 API 刷新并 upsert 进缓存（共享逻辑见 CacheSync，含 Widget 快照与 Spotlight 索引）
-    func refresh(accountId: String, accountName: String = "", context: ModelContext, force: Bool = false) async {
+    func refresh(accountId: String, accountName: String = "", force: Bool = false) async {
         // 非强制（首屏/切 Tab）且缓存仍新鲜：用缓存（@Query 已渲染），不重发请求
-        if !force, CachePolicy.zonesFresh(accountId: accountId, context: context) { return }
+        if !force, CachePolicy.zonesFresh(accountId: accountId) { return }
         // 已有加载在跑：等它结束即可，不另起重复请求
         if let loadTask {
             await loadTask.value
@@ -40,19 +38,19 @@ final class ZoneListViewModel {
         }
         let task = Task { [weak self] in
             guard let self else { return }
-            await self.load(accountId: accountId, accountName: accountName, context: context)
+            await self.load(accountId: accountId, accountName: accountName)
         }
         loadTask = task
         defer { loadTask = nil }
         await task.value
     }
 
-    private func load(accountId: String, accountName: String, context: ModelContext) async {
+    private func load(accountId: String, accountName: String) async {
         isLoading = true
         error = nil
         do {
             let zones = try await zoneService.listZones(accountId: accountId)
-            CacheSync.syncZones(zones, accountId: accountId, accountName: accountName, context: context)
+            CacheSync.syncZones(zones, accountId: accountId, accountName: accountName)
         } catch is CancellationError {
             // 任务取消属正常生命周期，不算加载失败
         } catch let urlError as URLError where urlError.code == .cancelled {

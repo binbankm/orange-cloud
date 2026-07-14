@@ -7,17 +7,16 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct WorkerListView: View {
 
-    @Environment(SessionStore.self) private var session
-    @Environment(AuthManager.self) private var auth
-    @Environment(\.modelContext) private var modelContext
-    @Query private var cachedScripts: [CachedWorkerScript]
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var auth: AuthManager
+    @EnvironmentObject private var cacheStore: CacheStore
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @State private var viewModel: WorkerListViewModel
-    @State private var uploadViewModel: WorkerUploadViewModel
+    @StateObject private var viewModel: WorkerListViewModel
+    @StateObject private var uploadViewModel: WorkerUploadViewModel
     @State private var searchText = ""
     @State private var tailTarget: CachedWorkerScript?
     @State private var showTailDenied = false
@@ -28,25 +27,23 @@ struct WorkerListView: View {
     private var canWrite: Bool { auth.hasScope("workers-scripts.write") }
 
     init(session: SessionStore) {
-        // 只读当前账号的脚本（多账号切换后缓存里会留有别的账号的条目）。
-        // 父视图用 .id(selectedAccount) 在切换账号时重建本视图，让谓词跟着更新。
         let accountId = session.selectedAccount?.id ?? ""
-        _cachedScripts = Query(
-            filter: #Predicate<CachedWorkerScript> { $0.accountId == accountId },
-            sort: \CachedWorkerScript.id
-        )
-        _viewModel = State(initialValue: WorkerListViewModel(workerService: session.workerService))
-        _uploadViewModel = State(initialValue: WorkerUploadViewModel(service: session.workerService, accountId: accountId))
+        _viewModel = StateObject(wrappedValue: WorkerListViewModel(workerService: session.workerService))
+        _uploadViewModel = StateObject(wrappedValue: WorkerUploadViewModel(service: session.workerService, accountId: accountId))
     }
 
     private var filteredScripts: [CachedWorkerScript] {
-        let scripts = searchText.isEmpty
-            ? Array(cachedScripts)
-            : cachedScripts.filter { $0.id.localizedCaseInsensitiveContains(searchText) }
+        let cachedScripts = cacheStore.scripts(for: session.selectedAccount?.id ?? "")
+        let scripts = searchText.isEmpty ? cachedScripts : cachedScripts.filter { $0.id.localizedCaseInsensitiveContains(searchText) }
         return sort.sorted(scripts, created: \.createdOn, modified: \.modifiedOn)
     }
 
+    private var cachedScripts: [CachedWorkerScript] {
+        cacheStore.scripts(for: session.selectedAccount?.id ?? "")
+    }
+
     var body: some View {
+        let _ = preferences.languageRaw
         // 复用宿主（开发者平台 / 旧 Tab）的单一 NavigationStack，本视图不自带 stack：
         //  · 自带 stack → 嵌套栈，点击行进详情会回弹到上级（开发者 Tab）；
         //  · 在「被 push 的子视图」上挂 .navigationDestination 又会失灵（导航栏切了、内容不切）。
@@ -59,13 +56,13 @@ struct WorkerListView: View {
                 } else if cachedScripts.isEmpty {
                     emptyState
                 } else if filteredScripts.isEmpty {
-                    ContentUnavailableView.search(text: searchText)
+                    OCContentUnavailableView.search(text: searchText)
                 } else {
                     scriptList
                 }
             }
             .background { SkyBackground() }
-            .navigationTitle("Workers")
+            .ocNavigationTitle("Workers")
             .searchable(text: $searchText, prompt: "搜索脚本")
             .sheet(item: $tailTarget) { script in
                 NavigationStack {
@@ -94,7 +91,7 @@ struct WorkerListView: View {
                     Task { await refresh() }
                 }
             }
-            .sensoryFeedback(.success, trigger: uploadViewModel.didUpload)
+            .ocSensoryFeedback(.success, trigger: uploadViewModel.didUpload)
             .task {
                 await refresh()
             }
@@ -132,7 +129,7 @@ struct WorkerListView: View {
                     }
                 }
             } header: {
-                Text("\(cachedScripts.count) 个 Worker")
+                Text.ocLocalized("\(cachedScripts.count) 个 Worker")
             } footer: {
                 Label("向左滑动查看实时日志 · 点按查看详情", systemImage: "hand.draw")
                     .font(.caption)
@@ -146,7 +143,7 @@ struct WorkerListView: View {
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
+        OCContentUnavailableView {
             Label("没有 Workers", systemImage: "bolt.slash")
         } description: {
             Text("在 Cloudflare Dashboard 部署你的第一个 Worker")
@@ -163,7 +160,7 @@ struct WorkerListView: View {
     private func refresh() async {
         await session.ensureAccounts()
         guard let accountId = session.selectedAccount?.id else { return }
-        await viewModel.refresh(accountId: accountId, context: modelContext)
+        await viewModel.refresh(accountId: accountId)
     }
 }
 

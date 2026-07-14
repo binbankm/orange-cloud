@@ -84,13 +84,13 @@ nonisolated struct EmptyResponse: Codable, Sendable {}
 extension CFAPIResponse {
     func toAPIError() -> APIError {
         let err = errors.first
-        return .cloudflareError(code: err?.code ?? 0, message: err?.message ?? String(localized: "未知错误"))
+        return .cloudflareError(code: err?.code ?? 0, message: err?.message ?? AppLocalization.string(localized: "未知错误"))
     }
 }
 
 extension CFAPIResponseArray {
     func toAPIError() -> APIError {
         let err = errors.first
-        return .cloudflareError(code: err?.code ?? 0, message: err?.message ?? String(localized: "未知错误"))
+        return .cloudflareError(code: err?.code ?? 0, message: err?.message ?? AppLocalization.string(localized: "未知错误"))
     }
 }

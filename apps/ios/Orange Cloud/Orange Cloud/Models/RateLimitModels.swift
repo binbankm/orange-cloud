@@ -110,10 +110,10 @@ nonisolated enum RateLimitAction: String, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .block:            String(localized: "阻止")
-        case .managedChallenge: String(localized: "托管质询")
-        case .jsChallenge:      String(localized: "JS 质询")
-        case .log:              String(localized: "仅记录")
+        case .block:            AppLocalization.string(localized: "阻止")
+        case .managedChallenge: AppLocalization.string(localized: "托管质询")
+        case .jsChallenge:      AppLocalization.string(localized: "JS 质询")
+        case .log:              AppLocalization.string(localized: "仅记录")
         }
     }
 }
@@ -126,10 +126,10 @@ nonisolated enum RateLimitPeriod: Int, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .s10:   String(localized: "10 秒")
-        case .s60:   String(localized: "1 分钟")
-        case .s600:  String(localized: "10 分钟")
-        case .s3600: String(localized: "1 小时")
+        case .s10:   AppLocalization.string(localized: "10 秒")
+        case .s60:   AppLocalization.string(localized: "1 分钟")
+        case .s600:  AppLocalization.string(localized: "10 分钟")
+        case .s3600: AppLocalization.string(localized: "1 小时")
         }
     }
 }

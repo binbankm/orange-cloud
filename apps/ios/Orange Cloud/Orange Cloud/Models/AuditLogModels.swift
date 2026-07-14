@@ -102,7 +102,7 @@ nonisolated struct AuditLogPage: Codable, Sendable {
     func toAPIError() -> APIError {
         let err = errors?.first
         return .cloudflareError(code: err?.code ?? 0,
-                                message: err?.message ?? String(localized: "未知错误"))
+                                message: err?.message ?? AppLocalization.string(localized: "未知错误"))
     }
 }
 

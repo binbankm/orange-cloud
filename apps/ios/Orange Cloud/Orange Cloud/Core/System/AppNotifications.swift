@@ -8,7 +8,6 @@
 
 import Foundation
 import UserNotifications
-import SwiftData
 
 @MainActor
 enum AppNotifications {
@@ -48,11 +47,10 @@ enum AppNotifications {
         }
     }
 
-    /// Zone 状态：与 SwiftData 缓存对比，变化即通知并回写缓存
+    /// Zone 状态：与本地缓存对比，变化即通知并回写缓存
     private static func checkZoneStatusChanges(zoneService: ZoneService) async {
-        let context = ModelContext(CacheContainer.shared)
-        guard let cached = SafeCache.fetch(FetchDescriptor<CachedZone>(), context: context),
-              !cached.isEmpty else { return }
+        let cached = CacheStore.shared.zones
+        guard !cached.isEmpty else { return }
 
         var changes: [(name: String, from: String, to: String)] = []
         // 按缓存中的账户分组拉取（上限 5 个账户，控制后台时间预算）
@@ -63,23 +61,22 @@ enum AppNotifications {
             for entry in cached where entry.accountId == accountId {
                 if let fresh = byId[entry.id], fresh.status != entry.status {
                     changes.append((entry.name, entry.status, fresh.status))
-                    entry.update(from: fresh)
+                    CacheStore.shared.upsert(zone: fresh, accountId: accountId)
                 }
             }
         }
-        SafeCache.perform("Zone 状态回写") { try context.save() }
 
         guard !changes.isEmpty else { return }
         if changes.count == 1, let change = changes.first {
             notify(
-                title: String(localized: "域名状态变更"),
-                body: String(localized: "\(change.name) 状态从 \(change.from) 变为 \(change.to)"),
+                title: AppLocalization.string(localized: "域名状态变更"),
+                body: AppLocalization.string(localized: "\(change.name) 状态从 \(change.from) 变为 \(change.to)"),
                 id: "zone-status-\(change.name)"
             )
         } else {
             notify(
-                title: String(localized: "域名状态变更"),
-                body: String(localized: "\(changes.count) 个域名状态发生变化：\(changes.map(\.name).formatted())"),
+                title: AppLocalization.string(localized: "域名状态变更"),
+                body: AppLocalization.string(localized: "\(changes.count) 个域名状态发生变化：\(changes.map(\.name).formatted())"),
                 id: "zone-status-multi"
             )
         }
@@ -96,14 +93,21 @@ enum AppNotifications {
            Date().timeIntervalSince(last) < 55 * 60 {
             return
         }
-        guard let account = try? await accountService.listAccounts().first,
-              let errors = try? await analyticsService.workersErrorsLastHour(accountId: account.id),
+        guard let accounts = try? await accountService.listAccounts(),
+              !accounts.isEmpty else { return }
+
+        // 优先检查 App Group 里记录的当前账号（与 Dashboard/Widget 展示的一致），
+        // 而非 API 返回顺序中碰巧排第一的账号——多账号 Pro 用户的其它账号错误不会被遗漏。
+        let currentAccountId = WidgetSnapshot.currentAccountId()
+        let account = accounts.first { $0.id == currentAccountId } ?? accounts[0]
+
+        guard let errors = try? await analyticsService.workersErrorsLastHour(accountId: account.id),
               errors > 0 else { return }
 
         defaults.set(Date(), forKey: lastNotifyKey)
         notify(
-            title: String(localized: "Workers 错误"),
-            body: String(localized: "过去 1 小时共 \(errors.formatted()) 次调用错误，点击查看详情"),
+            title: AppLocalization.string(localized: "Workers 错误"),
+            body: AppLocalization.string(localized: "过去 1 小时共 \(errors.formatted()) 次调用错误，点击查看详情"),
             id: "worker-errors"
         )
     }

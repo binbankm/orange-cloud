@@ -7,23 +7,22 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class CFAlertingViewModel {
+final class CFAlertingViewModel: ObservableObject {
 
     private let auth: AuthManager
     private let endpointURL: String   // push.o-c.do/{key}
 
-    private(set) var accounts: [Account] = []
-    private(set) var selectedAccountId: String?
-    private(set) var groups: [(category: String, alerts: [CFAvailableAlert])] = []
-    private(set) var policies: [CFAlertPolicy] = []
-    private(set) var pushWebhookId: String?
-    var isLoading = false
-    var error: String?
-    var busyAlertType: String?
+    @Published private(set) var accounts: [Account] = []
+    @Published private(set) var selectedAccountId: String?
+    @Published private(set) var groups: [(category: String, alerts: [CFAvailableAlert])] = []
+    @Published private(set) var policies: [CFAlertPolicy] = []
+    @Published private(set) var pushWebhookId: String?
+    @Published var isLoading = false
+    @Published var error: String?
+    @Published var busyAlertType: String?
 
     init(auth: AuthManager, endpointURL: String) {
         self.auth = auth

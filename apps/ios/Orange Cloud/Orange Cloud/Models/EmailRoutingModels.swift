@@ -53,11 +53,11 @@ nonisolated struct EmailRoutingRule: Codable, Sendable, Identifiable {
 
     /// 第一个动作的可读摘要
     var actionSummary: String {
-        guard let action = actions.first else { return String(localized: "无动作") }
+        guard let action = actions.first else { return AppLocalization.string(localized: "无动作") }
         switch action.type {
-        case "forward": return action.value?.joined(separator: ", ") ?? String(localized: "转发")
+        case "forward": return action.value?.joined(separator: ", ") ?? AppLocalization.string(localized: "转发")
         case "worker":  return action.value?.first.map { "Worker · \($0)" } ?? "Worker"
-        case "drop":    return String(localized: "丢弃")
+        case "drop":    return AppLocalization.string(localized: "丢弃")
         default:        return action.type
         }
     }

@@ -9,9 +9,10 @@
 import SwiftUI
 
 struct CacheRuleEditorView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let existing: CacheRule?
-    let viewModel: CacheRulesViewModel
+    @ObservedObject var viewModel: CacheRulesViewModel
 
     @Environment(\.dismiss) private var dismiss
 
@@ -65,6 +66,8 @@ struct CacheRuleEditorView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 if isReadOnly {
@@ -100,8 +103,8 @@ struct CacheRuleEditorView: View {
                     Text("缓存")
                 } footer: {
                     Text(eligibility == .bypass
-                         ? String(localized: "匹配的请求将不被缓存。")
-                         : String(localized: "匹配的请求按下方设置进行缓存。"))
+                         ? AppLocalization.string(localized: "匹配的请求将不被缓存。")
+                         : AppLocalization.string(localized: "匹配的请求按下方设置进行缓存。"))
                 }
 
                 if eligibility == .eligible {
@@ -154,7 +157,7 @@ struct CacheRuleEditorView: View {
         } footer: {
             Text(edgeMode == .overrideOrigin
                  ? durationHint(edgeSeconds)
-                 : String(localized: "Cloudflare 边缘节点缓存内容的时长。"))
+                 : AppLocalization.string(localized: "Cloudflare 边缘节点缓存内容的时长。"))
         }
     }
 
@@ -171,7 +174,7 @@ struct CacheRuleEditorView: View {
         } footer: {
             Text(browserMode == .overrideOrigin
                  ? durationHint(browserSeconds)
-                 : String(localized: "访客浏览器缓存内容的时长。"))
+                 : AppLocalization.string(localized: "访客浏览器缓存内容的时长。"))
         }
     }
 
@@ -198,11 +201,11 @@ struct CacheRuleEditorView: View {
     /// 秒数 → 人类可读时长（编辑器底部提示）
     private func durationHint(_ secondsText: String) -> String {
         guard let seconds = Int(secondsText), seconds > 0 else {
-            return String(localized: "请输入大于 0 的秒数。")
+            return AppLocalization.string(localized: "请输入大于 0 的秒数。")
         }
         let formatted = Duration.seconds(seconds)
             .formatted(.units(allowed: [.days, .hours, .minutes, .seconds], width: .wide))
-        return String(localized: "= \(formatted)")
+        return AppLocalization.string(localized: "= \(formatted)")
     }
 
     private func save() async {

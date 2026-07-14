@@ -10,7 +10,7 @@ import SwiftUI
 
 struct ContentView: View {
 
-    @Environment(WatchBridge.self) private var bridge
+    @EnvironmentObject private var bridge: WatchBridge
 
     var body: some View {
         NavigationStack {
@@ -73,7 +73,6 @@ private struct OverviewCard: View {
                 .monospacedDigit()
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
-                .contentTransition(.numericText())
             if series.count > 1 {
                 WatchSparkline(series: series)
                     .frame(height: 22)

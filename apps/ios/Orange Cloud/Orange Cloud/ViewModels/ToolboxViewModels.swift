@@ -7,19 +7,18 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
 // MARK: - DNS 查询
 
-@Observable
 @MainActor
-final class DNSLookupViewModel {
-    var name = ""
-    var type: DNSQueryType = .a
-    private(set) var results: [DNSRecordResult] = []
-    var isLoading = false
-    var error: String?
-    private(set) var hasRun = false
+final class DNSLookupViewModel: ObservableObject {
+    @Published var name = ""
+    @Published var type: DNSQueryType = .a
+    @Published private(set) var results: [DNSRecordResult] = []
+    @Published var isLoading = false
+    @Published var error: String?
+    @Published private(set) var hasRun = false
 
     private let service = DNSLookupService()
 
@@ -41,13 +40,12 @@ final class DNSLookupViewModel {
 
 // MARK: - CF 数据中心 trace
 
-@Observable
 @MainActor
-final class CFTraceViewModel {
-    var host = "1.1.1.1"
-    private(set) var result: CFTraceResult?
-    var isLoading = false
-    var error: String?
+final class CFTraceViewModel: ObservableObject {
+    @Published var host = "1.1.1.1"
+    @Published private(set) var result: CFTraceResult?
+    @Published var isLoading = false
+    @Published var error: String?
 
     private let service = CFTraceService()
 
@@ -66,15 +64,14 @@ final class CFTraceViewModel {
 
 // MARK: - HTTP 请求器
 
-@Observable
 @MainActor
-final class HTTPProbeViewModel {
-    var urlString = "https://"
-    var method = "GET"
+final class HTTPProbeViewModel: ObservableObject {
+    @Published var urlString = "https://"
+    @Published var method = "GET"
     let methods = ["GET", "HEAD", "POST"]
-    private(set) var result: HTTPProbeResult?
-    var isLoading = false
-    var error: String?
+    @Published private(set) var result: HTTPProbeResult?
+    @Published var isLoading = false
+    @Published var error: String?
 
     private let service = HTTPProbeService()
 
@@ -95,13 +92,12 @@ final class HTTPProbeViewModel {
 
 // MARK: - SSL 证书检查
 
-@Observable
 @MainActor
-final class CertInspectViewModel {
-    var host = ""
-    private(set) var info: CertInfo?
-    var isLoading = false
-    var error: String?
+final class CertInspectViewModel: ObservableObject {
+    @Published var host = ""
+    @Published private(set) var info: CertInfo?
+    @Published var isLoading = false
+    @Published var error: String?
 
     private let service = CertInspectService()
 
@@ -122,13 +118,12 @@ final class CertInspectViewModel {
 
 // MARK: - WHOIS
 
-@Observable
 @MainActor
-final class WhoisViewModel {
-    var domain = ""
-    private(set) var info: WhoisInfo?
-    var isLoading = false
-    var error: String?
+final class WhoisViewModel: ObservableObject {
+    @Published var domain = ""
+    @Published private(set) var info: WhoisInfo?
+    @Published var isLoading = false
+    @Published var error: String?
 
     private let service = RDAPService()
 
@@ -149,14 +144,13 @@ final class WhoisViewModel {
 
 // MARK: - GeoIP
 
-@Observable
 @MainActor
-final class GeoIPViewModel {
-    var ip = ""
-    private(set) var result: GeoIPResult?
-    private(set) var hasRun = false
-    var isLoading = false
-    var error: String?
+final class GeoIPViewModel: ObservableObject {
+    @Published var ip = ""
+    @Published private(set) var result: GeoIPResult?
+    @Published private(set) var hasRun = false
+    @Published var isLoading = false
+    @Published var error: String?
 
     private let service = GeoIPService()
 
@@ -169,7 +163,7 @@ final class GeoIPViewModel {
                 result = r
             } else {
                 result = nil
-                error = r.message ?? String(localized: "查询失败")
+                error = r.message ?? AppLocalization.string(localized: "查询失败")
             }
         } catch {
             result = nil

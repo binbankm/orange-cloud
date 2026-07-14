@@ -9,8 +9,9 @@
 import SwiftUI
 
 struct PublicHostnameFormView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    let viewModel: TunnelDetailViewModel
+    @ObservedObject var viewModel: TunnelDetailViewModel
     let editIndex: Int?
     let initialRule: IngressRule?
 
@@ -32,6 +33,8 @@ struct PublicHostnameFormView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
@@ -91,7 +94,7 @@ struct PublicHostnameFormView: View {
                     }
                 }
             }
-            .navigationTitle(isEditing ? String(localized: "编辑公共主机名") : String(localized: "添加公共主机名"))
+            .navigationTitle(isEditing ? AppLocalization.string(localized: "编辑公共主机名") : AppLocalization.string(localized: "添加公共主机名"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

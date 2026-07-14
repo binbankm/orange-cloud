@@ -8,10 +8,13 @@
 import SwiftUI
 
 struct CertInspectToolView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @State private var vm = CertInspectViewModel()
+    @StateObject private var vm = CertInspectViewModel()
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         ScrollView {
             VStack(spacing: OCLayout.islandGap) {
                 VStack(spacing: 12) {
@@ -80,7 +83,7 @@ struct CertInspectToolView: View {
             .padding(OCLayout.pagePadding)
         }
         .background { SkyBackground() }
-        .navigationTitle("SSL 证书检查")
+        .ocNavigationTitle("SSL 证书检查")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -92,9 +95,9 @@ struct CertInspectToolView: View {
             ToolKVRow("到期", ToolFormat.date(info.notAfter)),
         ]
         if let days = info.daysRemaining {
-            rows.append(ToolKVRow("剩余天数", info.isExpired ? String(localized: "已过期") : String(localized: "\(days) 天")))
+            rows.append(ToolKVRow("剩余天数", info.isExpired ? AppLocalization.string(localized: "已过期") : AppLocalization.string(localized: "\(days) 天")))
         }
-        if let bits = info.publicKeyBits { rows.append(ToolKVRow("公钥位数", String(localized: "\(bits) 位"))) }
+        if let bits = info.publicKeyBits { rows.append(ToolKVRow("公钥位数", AppLocalization.string(localized: "\(bits) 位"))) }
         if let serial = info.serialHex { rows.append(ToolKVRow("序列号", serial)) }
         return rows
     }

@@ -9,7 +9,7 @@ import SwiftUI
 
 struct WhoisToolView: View {
 
-    @State private var vm = WhoisViewModel()
+    @StateObject private var vm = WhoisViewModel()
 
     var body: some View {
         ScrollView {
@@ -60,7 +60,7 @@ struct WhoisToolView: View {
             .padding(OCLayout.pagePadding)
         }
         .background { SkyBackground() }
-        .navigationTitle("WHOIS")
+        .ocNavigationTitle("WHOIS")
         .navigationBarTitleDisplayMode(.inline)
     }
 

@@ -31,10 +31,15 @@ nonisolated enum OCLayout {
 struct SkyBackground: View {
 
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var preferences: AppPreferencesStore
     /// 预览用固定时刻；nil 时跟随系统时钟
     var date: Date? = nil
 
     var body: some View {
+
+        let _ = preferences.languageRaw
+        // TimelineView 只会按分钟触发；显式订阅主题状态，避免主题色切换等待下一次 tick。
+        let _ = preferences.themeRaw
         if let date {
             sky(at: date)
         } else {
@@ -114,6 +119,7 @@ extension View {
 struct HorizonArc: View {
 
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var preferences: AppPreferencesStore
     /// 预览用固定时刻；nil 时跟随系统时钟
     var date: Date? = nil
 
@@ -132,6 +138,10 @@ struct HorizonArc: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
+        // 与天空背景共用主题发布源，保证弧线与光点不会落后一帧。
+        let _ = preferences.themeRaw
         if let date {
             arc(at: date)
         } else {
@@ -203,7 +213,7 @@ private struct IslandReveal: ViewModifier {
                     shown = true
                     return
                 }
-                withAnimation(.smooth(duration: 0.5).delay(Double(index) * 0.06)) {
+                withAnimation(.ocSmooth(duration: 0.5).delay(Double(index) * 0.06)) {
                     shown = true
                 }
             }

@@ -8,7 +8,7 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
 /// 缓存级别（zone setting `cache_level` 的取值）
 nonisolated enum CacheLevel: String, CaseIterable, Identifiable, Sendable {
@@ -18,26 +18,25 @@ nonisolated enum CacheLevel: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .basic:      String(localized: "无查询字符串")
-        case .simplified: String(localized: "忽略查询字符串")
-        case .aggressive: String(localized: "标准")
+        case .basic:      AppLocalization.string(localized: "无查询字符串")
+        case .simplified: AppLocalization.string(localized: "忽略查询字符串")
+        case .aggressive: AppLocalization.string(localized: "标准")
         }
     }
 }
 
-@Observable
 @MainActor
-final class ZonePerformanceViewModel {
+final class ZonePerformanceViewModel: ObservableObject {
 
     /// 网络优化里的 on/off 设置，按 Cloudflare 仪表盘顺序
     static let networkToggles = ["brotli", "http2", "http3", "0rtt", "early_hints", "websockets", "ipv6"]
 
-    private(set) var values: [String: String] = [:]
-    private(set) var loaded = false
-    private(set) var isLoading = false
+    @Published private(set) var values: [String: String] = [:]
+    @Published private(set) var loaded = false
+    @Published private(set) var isLoading = false
     /// 正在写入的 setting ID
-    var updating: Set<String> = []
-    var error: String?
+    @Published var updating: Set<String> = []
+    @Published var error: String?
 
     private let service: ZoneSettingsService
     private let zoneId: String

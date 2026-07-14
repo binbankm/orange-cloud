@@ -12,7 +12,7 @@ struct TransformRuleEditorView: View {
 
     let phase: TransformPhase
     let existing: TransformRule?
-    let viewModel: ZoneTransformRulesViewModel
+    @ObservedObject var viewModel: ZoneTransformRulesViewModel
 
     @Environment(\.dismiss) private var dismiss
 

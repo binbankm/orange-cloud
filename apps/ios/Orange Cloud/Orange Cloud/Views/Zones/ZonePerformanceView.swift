@@ -9,12 +9,13 @@
 import SwiftUI
 
 struct ZonePerformanceView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @State private var viewModel: ZonePerformanceViewModel
-    @Environment(AuthManager.self) private var auth
+    @StateObject private var viewModel: ZonePerformanceViewModel
+    @EnvironmentObject private var auth: AuthManager
 
     init(zoneId: String, session: SessionStore) {
-        _viewModel = State(initialValue: ZonePerformanceViewModel(
+        _viewModel = StateObject(wrappedValue: ZonePerformanceViewModel(
             service: session.zoneSettingsService, zoneId: zoneId
         ))
     }
@@ -25,17 +26,19 @@ struct ZonePerformanceView: View {
 
     private var networkSpecs: [ToggleSpec] {
         [
-            .init(id: "brotli",      title: String(localized: "Brotli 压缩"),     subtitle: String(localized: "用 Brotli 压缩响应，体积更小"), icon: "archivebox"),
-            .init(id: "http2",       title: "HTTP/2",                            subtitle: String(localized: "多路复用，降低连接开销"),       icon: "bolt.horizontal"),
-            .init(id: "http3",       title: "HTTP/3 (QUIC)",                     subtitle: String(localized: "基于 QUIC 的更快传输"),         icon: "bolt.horizontal.circle"),
-            .init(id: "0rtt",        title: String(localized: "0-RTT 连接恢复"),  subtitle: String(localized: "加快重复访客的握手"),           icon: "arrow.clockwise"),
-            .init(id: "early_hints", title: "Early Hints",                       subtitle: String(localized: "提前下发 103 提示预加载资源"),   icon: "hare"),
-            .init(id: "websockets",  title: "WebSockets",                        subtitle: String(localized: "允许 WebSocket 长连接"),       icon: "arrow.left.arrow.right"),
-            .init(id: "ipv6",        title: String(localized: "IPv6 兼容"),       subtitle: String(localized: "为源站提供 IPv6 访问"),         icon: "network"),
+            .init(id: "brotli",      title: AppLocalization.string(localized: "Brotli 压缩"),     subtitle: AppLocalization.string(localized: "用 Brotli 压缩响应，体积更小"), icon: "archivebox"),
+            .init(id: "http2",       title: "HTTP/2",                            subtitle: AppLocalization.string(localized: "多路复用，降低连接开销"),       icon: "bolt.horizontal"),
+            .init(id: "http3",       title: "HTTP/3 (QUIC)",                     subtitle: AppLocalization.string(localized: "基于 QUIC 的更快传输"),         icon: "bolt.horizontal.circle"),
+            .init(id: "0rtt",        title: AppLocalization.string(localized: "0-RTT 连接恢复"),  subtitle: AppLocalization.string(localized: "加快重复访客的握手"),           icon: "arrow.clockwise"),
+            .init(id: "early_hints", title: "Early Hints",                       subtitle: AppLocalization.string(localized: "提前下发 103 提示预加载资源"),   icon: "hare"),
+            .init(id: "websockets",  title: "WebSockets",                        subtitle: AppLocalization.string(localized: "允许 WebSocket 长连接"),       icon: "arrow.left.arrow.right"),
+            .init(id: "ipv6",        title: AppLocalization.string(localized: "IPv6 兼容"),       subtitle: AppLocalization.string(localized: "为源站提供 IPv6 访问"),         icon: "network"),
         ]
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 if !viewModel.loaded {
@@ -44,8 +47,8 @@ struct ZonePerformanceView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, 60)
                     } else {
-                        ContentUnavailableView {
-                            Label(String(localized: "无法读取设置"), systemImage: "lock")
+                        OCContentUnavailableView {
+                            Label(AppLocalization.string(localized: "无法读取设置"), systemImage: "lock")
                         } description: {
                             Text("当前授权未包含「缓存与防护」的读取权限。请退出登录后重新授权。")
                         }
@@ -66,7 +69,7 @@ struct ZonePerformanceView: View {
             .padding()
         }
         .background { SkyBackground() }
-        .navigationTitle("性能与缓存")
+        .ocNavigationTitle("性能与缓存")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load() }
         .alert("操作失败", isPresented: .init(
@@ -82,7 +85,7 @@ struct ZonePerformanceView: View {
     // MARK: - 网络优化
 
     private var networkCard: some View {
-        card(String(localized: "网络优化")) {
+        card(AppLocalization.string(localized: "网络优化")) {
             VStack(spacing: 16) {
                 ForEach(networkSpecs, id: \.id) { spec in
                     toggleRow(spec)
@@ -94,7 +97,7 @@ struct ZonePerformanceView: View {
     // MARK: - 缓存
 
     private var cacheCard: some View {
-        card(String(localized: "缓存")) {
+        card(AppLocalization.string(localized: "缓存")) {
             VStack(spacing: 16) {
                 HStack(spacing: 12) {
                     TintIcon(systemImage: "speedometer", color: .ocOrange)
@@ -108,7 +111,7 @@ struct ZonePerformanceView: View {
                     if viewModel.updating.contains("cache_level") {
                         ProgressView()
                     } else {
-                        Picker(String(localized: "缓存级别"), selection: Binding(
+                        Picker(AppLocalization.string(localized: "缓存级别"), selection: Binding(
                             get: { viewModel.cacheLevel },
                             set: { lvl in Task { await viewModel.setCacheLevel(lvl) } }
                         )) {
@@ -119,9 +122,9 @@ struct ZonePerformanceView: View {
                     }
                 }
                 toggleRow(.init(id: "always_online", title: "Always Online",
-                                subtitle: String(localized: "源站离线时提供缓存快照"), icon: "wifi.slash"))
-                toggleRow(.init(id: "sort_query_string_for_cache", title: String(localized: "排序查询字符串"),
-                                subtitle: String(localized: "忽略查询参数顺序以提升命中率"), icon: "arrow.up.arrow.down"))
+                                subtitle: AppLocalization.string(localized: "源站离线时提供缓存快照"), icon: "wifi.slash"))
+                toggleRow(.init(id: "sort_query_string_for_cache", title: AppLocalization.string(localized: "排序查询字符串"),
+                                subtitle: AppLocalization.string(localized: "忽略查询参数顺序以提升命中率"), icon: "arrow.up.arrow.down"))
             }
         }
     }

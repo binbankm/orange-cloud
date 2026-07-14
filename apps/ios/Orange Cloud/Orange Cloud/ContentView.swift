@@ -6,25 +6,30 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
 
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
+    @EnvironmentObject private var preferences: AppPreferencesStore
+    @StateObject private var router = AppRouter.shared
     @AppStorage(AppMotion.storageKey) private var reduceAnimations = false
 
     var body: some View {
-        @Bindable var router = AppRouter.shared
+        // 明确读取已发布的主题状态，确保子树中使用的动态主题色在切换后重新求值。
+        let _ = (preferences.themeRaw, preferences.appearanceRaw, preferences.languageIdentity)
         return Group {
             if auth.isLoggedIn {
                 // 按身份重建会话子树：切换/新增登录身份时 SessionStore（含 token 客户端）全新创建
                 SessionRootView(auth: auth)
                     .id(auth.currentSessionId)
+                    // 本地化资源与 UIKit 导航标题都在语言改变时重建；选中的 Tab 用 SceneStorage 保留。
+                    .id(preferences.languageIdentity)
             } else {
                 LoginView()
+                    .id(preferences.languageIdentity)
             }
         }
-        .animation(.smooth, value: auth.isLoggedIn)
+        .animation(.ocSmooth, value: auth.isLoggedIn)
         // App「减少动画」开关下注全树：Zoom 导航转场 / 玻璃岛浮现 / 骨架闪烁统一读它
         .environment(\.appReduceMotion, reduceAnimations)
         // 「免登录工具箱」挂在 auth 闸门之上（不随 .id 会话重建销毁），
@@ -44,16 +49,21 @@ struct ContentView: View {
 
 /// 登录后才存在的子树：持有本次会话的 SessionStore（API Client + Services）
 private struct SessionRootView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @State private var session: SessionStore
+    @StateObject private var session: SessionStore
 
     init(auth: AuthManager) {
-        _session = State(initialValue: SessionStore(authManager: auth))
+        _session = StateObject(wrappedValue: SessionStore(authManager: auth))
     }
 
     var body: some View {
+
+        let _ = preferences.languageIdentity
         MainTabView()
-            .environment(session)
+            // 语言切换是 UI 配置变更：重建导航栈，避免任意深层页面保留旧语言的 UIKit 标题。
+            .id(preferences.languageIdentity)
+            .environmentObject(session)
             .whatsNewSheet()
             .telemetryConsentPrompt()
     }
@@ -61,6 +71,7 @@ private struct SessionRootView: View {
 
 #Preview {
     ContentView()
-        .environment(AuthManager())
-        .modelContainer(for: [CachedZone.self, CachedDNSRecord.self], inMemory: true)
+        .environmentObject(AuthManager())
+        .environmentObject(AppPreferencesStore.shared)
+        .environmentObject(CacheStore.shared)
 }

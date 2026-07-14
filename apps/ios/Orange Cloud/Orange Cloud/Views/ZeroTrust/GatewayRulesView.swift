@@ -8,11 +8,13 @@
 import SwiftUI
 
 struct GatewayRulesView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var vm: GatewayRulesViewModel?
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var vmStore = OptionalObservableObjectStore()
+    private var vm: GatewayRulesViewModel? { vmStore.value(as: GatewayRulesViewModel.self) }
     @State private var showCreate = false
     @State private var editTarget: GatewayRule?
     @State private var deleteTarget: GatewayRule?
@@ -21,6 +23,8 @@ struct GatewayRulesView: View {
     private var canWrite: Bool { auth.hasScope("teams.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if let vm {
                 content(vm)
@@ -29,7 +33,7 @@ struct GatewayRulesView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("Gateway 策略")
+        .ocNavigationTitle("Gateway 策略")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if vm != nil {
@@ -52,7 +56,7 @@ struct GatewayRulesView: View {
             Text("当前授权未包含 Zero Trust 写权限（teams.write）。\n请在设置中退出登录后重新授权以启用此功能。")
         }
         .confirmationDialog(
-            deleteTarget.map { String(localized: "删除策略「\($0.name ?? String(localized: "未命名策略"))」？") } ?? "",
+            deleteTarget.map { AppLocalization.string(localized: "删除策略「\($0.name ?? AppLocalization.string(localized: "未命名策略"))」？") } ?? "",
             isPresented: Binding(get: { deleteTarget != nil }, set: { if !$0 { deleteTarget = nil } }),
             titleVisibility: .visible
         ) {
@@ -66,7 +70,7 @@ struct GatewayRulesView: View {
             await session.ensureAccounts()
             guard vm == nil else { return }
             let model = GatewayRulesViewModel(service: session.zeroTrustService, accountId: session.selectedAccount?.id)
-            vm = model
+            vmStore.set(model)
             await model.load()
         }
     }
@@ -76,10 +80,10 @@ struct GatewayRulesView: View {
         if vm.isLoading && !vm.loaded {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if vm.rules.isEmpty {
-            ContentUnavailableView {
+            OCContentUnavailableView {
                 Label("没有 Gateway 策略", systemImage: "shield.lefthalf.filled")
             } description: {
-                Text(vm.error ?? String(localized: "该账号下还没有 Gateway（DNS / HTTP / 网络）策略。"))
+                Text(vm.error ?? AppLocalization.string(localized: "该账号下还没有 Gateway（DNS / HTTP / 网络）策略。"))
             } actions: {
                 if canWrite {
                     Button("新建策略") { showCreate = true }
@@ -106,7 +110,7 @@ struct GatewayRulesView: View {
                                 Button {
                                     Task { await vm.toggle(rule) }
                                 } label: {
-                                    Label(rule.isEnabled ? String(localized: "停用") : String(localized: "启用"),
+                                    Label(rule.isEnabled ? AppLocalization.string(localized: "停用") : AppLocalization.string(localized: "启用"),
                                           systemImage: rule.isEnabled ? "pause" : "play")
                                 }
                                 .tint(rule.isEnabled ? .gray : .ocOrange)
@@ -120,7 +124,7 @@ struct GatewayRulesView: View {
             }
             .daybreakList()
             .refreshable { await vm.load() }
-            .sensoryFeedback(.success, trigger: vm.didChange)
+            .ocSensoryFeedback(.success, trigger: vm.didChange)
         }
     }
 
@@ -128,7 +132,7 @@ struct GatewayRulesView: View {
         HStack(spacing: 12) {
             TintIcon(systemImage: "shield.lefthalf.filled", color: rule.isEnabled ? .ocOrange : .gray)
             VStack(alignment: .leading, spacing: 3) {
-                Text(rule.name?.isEmpty == false ? rule.name! : String(localized: "未命名策略"))
+                Text(rule.name?.isEmpty == false ? rule.name! : AppLocalization.string(localized: "未命名策略"))
                     .font(.callout).foregroundStyle(.primary).lineLimit(1)
                 Text("\(rule.kindLabel) · \(rule.actionLabel)")
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)

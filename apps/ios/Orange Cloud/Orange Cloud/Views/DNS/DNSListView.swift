@@ -6,19 +6,17 @@
 //
 
 import SwiftUI
-import SwiftData
-import TipKit
 
 struct DNSListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let zoneId: String
     let zoneName: String
 
-    @Environment(\.modelContext) private var modelContext
-    @Environment(AuthManager.self) private var auth
-    @Query private var records: [CachedDNSRecord]
+    @EnvironmentObject private var auth: AuthManager
+    @EnvironmentObject private var cacheStore: CacheStore
 
-    @State private var viewModel: DNSListViewModel
+    @StateObject private var viewModel: DNSListViewModel
     @State private var searchText = ""
     @State private var formMode: DNSFormMode?
     @State private var recordToDelete: CachedDNSRecord?
@@ -27,11 +25,13 @@ struct DNSListView: View {
     init(zoneId: String, zoneName: String, session: SessionStore) {
         self.zoneId = zoneId
         self.zoneName = zoneName
-        _records = Query(
-            filter: #Predicate<CachedDNSRecord> { $0.zoneId == zoneId },
-            sort: [SortDescriptor(\CachedDNSRecord.type), SortDescriptor(\CachedDNSRecord.name)]
-        )
-        _viewModel = State(initialValue: DNSListViewModel(dnsService: session.dnsService, zoneId: zoneId, zoneName: zoneName))
+        _viewModel = StateObject(wrappedValue: DNSListViewModel(dnsService: session.dnsService, zoneId: zoneId, zoneName: zoneName))
+    }
+
+    private var records: [CachedDNSRecord] {
+        cacheStore.records(for: zoneId).sorted {
+            ($0.type, $0.name) < ($1.type, $1.name)
+        }
     }
 
     private var filteredRecords: [CachedDNSRecord] {
@@ -55,24 +55,26 @@ struct DNSListView: View {
     // MARK: - body
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if records.isEmpty && viewModel.isLoading {
                 SkeletonList(rows: 10, icon: .rounded(width: 52, height: 24), trailing: true)
             } else if records.isEmpty {
-                ContentUnavailableView {
-                    Label("没有 DNS 记录", systemImage: "network.slash")
+                OCContentUnavailableView {
+                    Label(AppLocalization.string(localized: "没有 DNS 记录"), systemImage: "network.slash")
                 } description: {
-                    Text(canWrite ? String(localized: "点击右上角 + 添加第一条记录") : String(localized: "当前授权仅限读取，无法添加记录"))
+                    Text(canWrite ? AppLocalization.string(localized: "点击右上角 + 添加第一条记录") : AppLocalization.string(localized: "当前授权仅限读取，无法添加记录"))
                 } actions: {
                     if canWrite {
-                        Button("添加记录") { formMode = .add }
+                        Button(AppLocalization.string(localized: "添加记录")) { formMode = .add }
                             .buttonStyle(.borderedProminent)
                             .tint(Color.ocOrangePressed)
                             .fontWeight(.bold)
                     }
                 }
             } else if filteredRecords.isEmpty {
-                ContentUnavailableView.search(text: searchText)
+                OCContentUnavailableView.search(text: searchText)
             } else {
                 recordList
             }
@@ -80,17 +82,17 @@ struct DNSListView: View {
         .background { SkyBackground() }
         .navigationTitle(zoneName)
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $searchText, prompt: "搜索记录")
+        .searchable(text: $searchText, prompt: AppLocalization.string(localized: "搜索记录"))
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("添加", systemImage: "plus") { requireWrite { formMode = .add } }
+                Button(AppLocalization.string(localized: "添加"), systemImage: "plus") { requireWrite { formMode = .add } }
             }
         }
         .sheet(item: $formMode) { mode in
             DNSRecordFormView(mode: mode, viewModel: viewModel)
         }
         .confirmationDialog(
-            "删除 DNS 记录",
+            AppLocalization.string(localized: "删除 DNS 记录"),
             isPresented: .init(
                 get: { recordToDelete != nil },
                 set: { if !$0 { recordToDelete = nil } }
@@ -98,34 +100,34 @@ struct DNSListView: View {
             titleVisibility: .visible
         ) {
             if let record = recordToDelete {
-                Button("删除 \(record.name)", role: .destructive) {
+                Button(AppLocalization.string(localized: "删除 \(record.name)"), role: .destructive) {
                     Task {
-                        await viewModel.delete(recordId: record.id, context: modelContext)
+                        await viewModel.delete(recordId: record.id)
                     }
                 }
             }
         } message: {
-            Text("此操作不可撤销，DNS 解析将立即生效变更。")
+            Text(AppLocalization.string(localized: "此操作不可撤销，DNS 解析将立即生效变更。"))
         }
         .task {
-            await viewModel.refresh(context: modelContext)
+            await viewModel.refresh()
         }
-        .sensoryFeedback(.success, trigger: viewModel.didSave)
+        .ocSensoryFeedback(.success, trigger: viewModel.didSave)
         // 权限不足提示
-        .alert("权限不足", isPresented: .init(
+        .alert(AppLocalization.string(localized: "权限不足"), isPresented: .init(
             get: { deniedScope != nil },
             set: { if !$0 { deniedScope = nil } }
         )) {
-            Button("好", role: .cancel) {}
+            Button(AppLocalization.string(localized: "好"), role: .cancel) {}
         } message: {
-            Text("当前授权未包含 DNS 编辑权限（\(deniedScope ?? "dns.write")）。\n请在设置中退出登录后重新授权以启用此功能。")
+            Text(AppLocalization.string(localized: "当前授权未包含 DNS 编辑权限（\(deniedScope ?? "dns.write")）。\n请在设置中退出登录后重新授权以启用此功能。"))
         }
         // API 错误提示（仅在表单未显示时展示，避免与表单内错误重叠）
-        .alert("出错了", isPresented: .init(
+        .alert(AppLocalization.string(localized: "出错了"), isPresented: .init(
             get: { viewModel.error != nil && formMode == nil && deniedScope == nil },
             set: { if !$0 { viewModel.error = nil } }
         )) {
-            Button("好", role: .cancel) {}
+            Button(AppLocalization.string(localized: "好"), role: .cancel) {}
         } message: {
             Text(viewModel.error ?? "")
         }
@@ -133,23 +135,18 @@ struct DNSListView: View {
 
     private var recordList: some View {
         List {
-            if canWrite {
-                TipView(DNSSwipeTip())
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
-            }
             ForEach(filteredRecords) { record in
                 DNSRecordRow(record: record)
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             requireWrite { recordToDelete = record }
                         } label: {
-                            Label("删除", systemImage: "trash")
+                            Label(AppLocalization.string(localized: "删除"), systemImage: "trash")
                         }
                         Button {
                             requireWrite { formMode = .edit(record) }
                         } label: {
-                            Label("编辑", systemImage: "pencil")
+                            Label(AppLocalization.string(localized: "编辑"), systemImage: "pencil")
                         }
                         .tint(.blue)
                     }
@@ -162,7 +159,7 @@ struct DNSListView: View {
         }
         .scrollContentBackground(.hidden)
         .refreshable {
-            await viewModel.refresh(context: modelContext, force: true)
+            await viewModel.refresh(force: true)
         }
     }
 }
@@ -184,9 +181,12 @@ enum DNSFormMode: Identifiable {
 // MARK: - 记录行
 
 struct DNSRecordRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let record: CachedDNSRecord
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         HStack(spacing: 12) {
             Text(record.type)
                 .font(.caption.bold().monospaced())

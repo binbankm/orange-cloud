@@ -11,6 +11,7 @@
 import SwiftUI
 
 struct AccessAppEditorView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     enum Mode: Equatable {
         case create
@@ -18,7 +19,7 @@ struct AccessAppEditorView: View {
     }
 
     let mode: Mode
-    let viewModel: AccessAppsViewModel
+    @ObservedObject var viewModel: AccessAppsViewModel
     let onSuccess: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -73,6 +74,8 @@ struct AccessAppEditorView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 if loadingDetail {
@@ -85,7 +88,7 @@ struct AccessAppEditorView: View {
                     }
                 }
             }
-            .navigationTitle(isCreate ? String(localized: "新建 Access 应用") : String(localized: "编辑 Access 应用"))
+            .navigationTitle(isCreate ? AppLocalization.string(localized: "新建 Access 应用") : AppLocalization.string(localized: "编辑 Access 应用"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -95,7 +98,7 @@ struct AccessAppEditorView: View {
                     Button {
                         Task { await save() }
                     } label: {
-                        if viewModel.isSaving { ProgressView() } else { Text(isCreate ? String(localized: "创建") : String(localized: "保存")).fontWeight(.semibold) }
+                        if viewModel.isSaving { ProgressView() } else { Text(isCreate ? AppLocalization.string(localized: "创建") : AppLocalization.string(localized: "保存")).fontWeight(.semibold) }
                     }
                     .disabled(!canSave || loadingDetail)
                 }

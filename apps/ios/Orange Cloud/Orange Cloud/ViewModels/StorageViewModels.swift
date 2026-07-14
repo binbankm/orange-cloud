@@ -7,23 +7,22 @@
 //
 
 import Foundation
-import Observation
+import Combine
 import UIKit
 
 // MARK: - R2
 
-@Observable
 @MainActor
-final class R2BucketListViewModel {
+final class R2BucketListViewModel: ObservableObject {
 
-    var buckets: [R2Bucket] = []
-    var usageByBucket: [String: R2BucketUsage] = [:]
-    var isLoading = false
-    var error: String?
-    var isCreating = false
-    var didCreate = false      // sensoryFeedback 触发器
-    var isDeleting = false
-    var didDelete = false      // sensoryFeedback 触发器
+    @Published var buckets: [R2Bucket] = []
+    @Published var usageByBucket: [String: R2BucketUsage] = [:]
+    @Published var isLoading = false
+    @Published var error: String?
+    @Published var isCreating = false
+    @Published var didCreate = false
+    @Published var isDeleting = false
+    @Published var didDelete = false
 
     private let service: R2Service
     private let analyticsService: AnalyticsService
@@ -86,17 +85,16 @@ final class R2BucketListViewModel {
     }
 }
 
-@Observable
 @MainActor
-final class R2ObjectListViewModel {
+final class R2ObjectListViewModel: ObservableObject {
 
-    var objects: [R2Object] = []
-    var folders: [R2Folder] = []
-    var currentPrefix = ""
-    var isLoading = false
-    var isLoadingMore = false
-    var error: String?
-    private(set) var nextCursor: String?
+    @Published var objects: [R2Object] = []
+    @Published var folders: [R2Folder] = []
+    @Published var currentPrefix = ""
+    @Published var isLoading = false
+    @Published var isLoadingMore = false
+    @Published var error: String?
+    @Published private(set) var nextCursor: String?
 
     var hasMore: Bool { nextCursor != nil }
     var isContentEmpty: Bool { folders.isEmpty && objects.isEmpty }
@@ -176,9 +174,9 @@ final class R2ObjectListViewModel {
 
     // MARK: - 对象读写
 
-    var isUploading = false
-    var isDownloading = false
-    var didUpload = false      // sensoryFeedback 触发器
+    @Published var isUploading = false
+    @Published var isDownloading = false
+    @Published var didUpload = false
 
     /// 下载对象到临时文件（QuickLook 预览用），文件名保留原始扩展名
     func downloadToTemp(object: R2Object) async -> URL? {
@@ -239,10 +237,10 @@ final class R2ObjectListViewModel {
 
     // MARK: - 复制 / 移动（流式 + iOS 26 连续后台任务）
 
-    var isTransferring = false
-    var transferProgress: Double = 0
-    var transferLabel: String?
-    var didTransfer = false     // sensoryFeedback 触发器
+    @Published var isTransferring = false
+    @Published var transferProgress: Double = 0
+    @Published var transferLabel: String?
+    @Published var didTransfer = false
 
     /// 是否可复制/移动：受 client/v4 单次 PUT ~300MB 上限约束
     func canTransfer(_ object: R2Object) -> Bool {
@@ -252,7 +250,7 @@ final class R2ObjectListViewModel {
     /// 复制对象到 destinationKey（同桶，可含 / 表示文件夹）
     func copyObject(_ object: R2Object, to destinationKey: String) async -> Bool {
         let contentType = object.httpMetadata?.contentType ?? "application/octet-stream"
-        return await runTransfer(object: object, label: String(localized: "复制中…")) { [service, accountId, bucketName] progress in
+        return await runTransfer(object: object, label: AppLocalization.string(localized: "复制中…")) { [service, accountId, bucketName] progress in
             try await service.copyObject(
                 accountId: accountId, bucketName: bucketName,
                 sourceKey: object.key, destinationKey: destinationKey,
@@ -264,7 +262,7 @@ final class R2ObjectListViewModel {
     /// 移动 / 重命名对象到 destinationKey（同桶）
     func moveObject(_ object: R2Object, to destinationKey: String) async -> Bool {
         let contentType = object.httpMetadata?.contentType ?? "application/octet-stream"
-        return await runTransfer(object: object, label: String(localized: "移动中…")) { [service, accountId, bucketName] progress in
+        return await runTransfer(object: object, label: AppLocalization.string(localized: "移动中…")) { [service, accountId, bucketName] progress in
             try await service.moveObject(
                 accountId: accountId, bucketName: bucketName,
                 sourceKey: object.key, destinationKey: destinationKey,
@@ -282,7 +280,7 @@ final class R2ObjectListViewModel {
     ) async -> Bool {
         guard !isTransferring else { return false }
         guard canTransfer(object) else {
-            error = String(localized: "对象超过 300 MB，受 Cloudflare API 限制无法在 App 内复制或移动")
+            error = AppLocalization.string(localized: "对象超过 300 MB，受 Cloudflare API 限制无法在 App 内复制或移动")
             return false
         }
         isTransferring = true
@@ -320,17 +318,16 @@ final class R2ObjectListViewModel {
 
 // MARK: - R2 桶设置（公开访问 / CORS）
 
-@Observable
 @MainActor
-final class R2BucketSettingsViewModel {
+final class R2BucketSettingsViewModel: ObservableObject {
 
-    var managedDomain: R2ManagedDomain?
-    var customDomains: [R2CustomDomain] = []
-    var corsRules: [R2CorsRule] = []
-    var isLoading = false
-    var isSaving = false
-    var error: String?
-    var didChange = false      // sensoryFeedback 触发器
+    @Published var managedDomain: R2ManagedDomain?
+    @Published var customDomains: [R2CustomDomain] = []
+    @Published var corsRules: [R2CorsRule] = []
+    @Published var isLoading = false
+    @Published var isSaving = false
+    @Published var error: String?
+    @Published var didChange = false
 
     private let service: R2Service
     private let accountId: String
@@ -418,17 +415,16 @@ final class R2BucketSettingsViewModel {
 
 // MARK: - D1
 
-@Observable
 @MainActor
-final class D1DatabaseListViewModel {
+final class D1DatabaseListViewModel: ObservableObject {
 
-    var databases: [D1Database] = []
-    var isLoading = false
-    var error: String?
-    var isCreating = false
-    var didCreate = false      // sensoryFeedback 触发器
-    var isDeleting = false
-    var didDelete = false      // sensoryFeedback 触发器
+    @Published var databases: [D1Database] = []
+    @Published var isLoading = false
+    @Published var error: String?
+    @Published var isCreating = false
+    @Published var didCreate = false
+    @Published var isDeleting = false
+    @Published var didDelete = false
 
     private let service: D1Service
 
@@ -504,20 +500,19 @@ final class D1DatabaseListViewModel {
     }
 }
 
-@Observable
 @MainActor
-final class D1QueryViewModel {
+final class D1QueryViewModel: ObservableObject {
 
-    var sql = "SELECT name FROM sqlite_master WHERE type='table';"
-    var results: [D1QueryResult] = []
-    var isRunning = false
-    var error: String?
-    var didRun = false      // sensoryFeedback 触发器
+    @Published var sql = "SELECT name FROM sqlite_master WHERE type='table';"
+    @Published var results: [D1QueryResult] = []
+    @Published var isRunning = false
+    @Published var error: String?
+    @Published var didRun = false
 
     /// 结果驻留封顶：单条语句只保留前 maxStoredRows 行（大结果集整包驻留内存
     /// 是概览 hang / 内存告警的源头），原始行数记在 originalRowCounts 供提示
     static let maxStoredRows = 500
-    private(set) var originalRowCounts: [Int] = []
+    @Published private(set) var originalRowCounts: [Int] = []
 
     /// SELECT / WITH 且不带 LIMIT：执行前提醒可能返回大量行
     var needsLimitReminder: Bool {
@@ -527,8 +522,8 @@ final class D1QueryViewModel {
     }
 
     /// 数据库内的用户表（排除 sqlite_* 与 D1 内部表）
-    private(set) var tables: [String] = []
-    private(set) var tablesLoaded = false
+    @Published private(set) var tables: [String] = []
+    @Published private(set) var tablesLoaded = false
 
     private let service: D1Service
     private let accountId: String
@@ -581,25 +576,24 @@ final class D1QueryViewModel {
     }
 }
 
-@Observable
 @MainActor
-final class D1TableViewModel {
+final class D1TableViewModel: ObservableObject {
 
-    private(set) var columns: [D1Column] = []
-    private(set) var rows: [[String: JSONValue]] = []
-    private(set) var hasMore = false
+    @Published private(set) var columns: [D1Column] = []
+    @Published private(set) var rows: [[String: JSONValue]] = []
+    @Published private(set) var hasMore = false
     /// 各列展示宽度（首页数据采样一次算定，懒加载行直接用定宽保证列对齐）
-    private(set) var columnWidths: [String: CGFloat] = [:]
-    var isLoading = false
-    var isSaving = false
-    var error: String?
-    var didSave = false
+    @Published private(set) var columnWidths: [String: CGFloat] = [:]
+    @Published var isLoading = false
+    @Published var isSaving = false
+    @Published var error: String?
+    @Published var didSave = false
 
     /// 行编辑用的 rowid 键（别名避免与同名列冲突）
     static let rowidKey = "_oc_rowid_"
     /// 单元格取数截断长度：分页 SQL 里 substr 只取前 cellLimit+1 个字符，
     /// 防大 TEXT/BLOB 字段拖爆网络包 / JSON 解码内存 / CoreText 排版（主线程 hang 源）
-    static let cellLimit = 256
+    nonisolated static let cellLimit = 256
     /// 已加载行数上限：到顶停止翻页，引导用查询控制台加 WHERE 筛选
     static let maxLoadedRows = 1000
 
@@ -792,17 +786,16 @@ final class D1TableViewModel {
 
 // MARK: - KV
 
-@Observable
 @MainActor
-final class KVNamespaceListViewModel {
+final class KVNamespaceListViewModel: ObservableObject {
 
-    var namespaces: [KVNamespace] = []
-    var isLoading = false
-    var error: String?
-    var isCreating = false
-    var didCreate = false      // sensoryFeedback 触发器
-    var isDeleting = false
-    var didDelete = false      // sensoryFeedback 触发器
+    @Published var namespaces: [KVNamespace] = []
+    @Published var isLoading = false
+    @Published var error: String?
+    @Published var isCreating = false
+    @Published var didCreate = false
+    @Published var isDeleting = false
+    @Published var didDelete = false
 
     private let service: KVService
 
@@ -856,15 +849,14 @@ final class KVNamespaceListViewModel {
     }
 }
 
-@Observable
 @MainActor
-final class KVKeyListViewModel {
+final class KVKeyListViewModel: ObservableObject {
 
-    var keys: [KVKey] = []
-    var isLoading = false
-    var isLoadingMore = false
-    var error: String?
-    private(set) var nextCursor: String?
+    @Published var keys: [KVKey] = []
+    @Published var isLoading = false
+    @Published var isLoadingMore = false
+    @Published var error: String?
+    @Published private(set) var nextCursor: String?
 
     var hasMore: Bool { nextCursor != nil }
 
@@ -939,17 +931,16 @@ final class KVKeyListViewModel {
     }
 }
 
-@Observable
 @MainActor
-final class KVValueViewModel {
+final class KVValueViewModel: ObservableObject {
 
-    var valueText = ""
-    var isBinary = false
-    var byteCount = 0
-    var isLoading = false
-    var isSaving = false
-    var error: String?
-    var didSave = false     // sensoryFeedback 触发器
+    @Published var valueText = ""
+    @Published var isBinary = false
+    @Published var byteCount = 0
+    @Published var isLoading = false
+    @Published var isSaving = false
+    @Published var error: String?
+    @Published var didSave = false
 
     private let service: KVService
     private let accountId: String

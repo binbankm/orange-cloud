@@ -9,7 +9,7 @@ import SwiftUI
 
 struct PagesBuildConfigEditorView: View {
 
-    let viewModel: PagesProjectDetailViewModel
+    @ObservedObject var viewModel: PagesProjectDetailViewModel
 
     @Environment(\.dismiss) private var dismiss
 
@@ -71,7 +71,7 @@ struct PagesBuildConfigEditorView: View {
                 }
             }
         }
-        .navigationTitle("构建配置")
+        .ocNavigationTitle("构建配置")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {

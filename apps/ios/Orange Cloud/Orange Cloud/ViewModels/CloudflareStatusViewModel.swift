@@ -7,24 +7,23 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class CloudflareStatusViewModel {
+final class CloudflareStatusViewModel: ObservableObject {
 
-    private(set) var overall: StatusPageOverall?
-    private(set) var activeIncidents: [StatusPageIncident] = []
-    private(set) var maintenances: [StatusPageIncident] = []
+    @Published private(set) var overall: StatusPageOverall?
+    @Published private(set) var activeIncidents: [StatusPageIncident] = []
+    @Published private(set) var maintenances: [StatusPageIncident] = []
     /// 非正常状态的产品服务（「Cloudflare Sites and Services」分组的叶子组件）
-    private(set) var affectedProducts: [StatusPageComponent] = []
-    private(set) var productTotal = 0
+    @Published private(set) var affectedProducts: [StatusPageComponent] = []
+    @Published private(set) var productTotal = 0
     /// 边缘网络按大区汇总（PoP 节点常态有几十个在维护/重路由，不逐个列出）
-    private(set) var regions: [StatusPageRegion] = []
+    @Published private(set) var regions: [StatusPageRegion] = []
     /// 已解决的近期事件（剔除进行中的，最多 10 条）
-    private(set) var recentIncidents: [StatusPageIncident] = []
-    var isLoading = false
-    var error: String?
+    @Published private(set) var recentIncidents: [StatusPageIncident] = []
+    @Published var isLoading = false
+    @Published var error: String?
 
     private static let serviceGroupName = "Cloudflare Sites and Services"
 

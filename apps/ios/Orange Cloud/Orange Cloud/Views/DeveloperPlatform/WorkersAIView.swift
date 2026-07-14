@@ -9,18 +9,22 @@
 import SwiftUI
 
 struct WorkersAIView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let session: SessionStore
-    @State private var vm: WorkersAIViewModel?
+    @StateObject private var vmStore = OptionalObservableObjectStore()
+    private var vm: WorkersAIViewModel? { vmStore.value(as: WorkersAIViewModel.self) }
     @State private var searchText = ""
     @State private var detailTarget: AIModel?
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if let vm { content(vm) } else { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
         }
         .background { SkyBackground() }
-        .navigationTitle("Workers AI")
+        .ocNavigationTitle("Workers AI")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "搜索模型")
         .sheet(item: $detailTarget) { model in
@@ -30,7 +34,7 @@ struct WorkersAIView: View {
             await session.ensureAccounts()
             guard vm == nil else { return }
             let model = WorkersAIViewModel(service: session.workersAIService, accountId: session.selectedAccount?.id)
-            vm = model
+            vmStore.set(model)
             await model.load()
         }
     }
@@ -40,15 +44,15 @@ struct WorkersAIView: View {
         if vm.isLoading && !vm.loaded {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if vm.models.isEmpty {
-            ContentUnavailableView {
-                Label("没有可用模型", systemImage: "brain")
+            OCContentUnavailableView {
+                Label(AppLocalization.string(localized: "没有可用模型"), systemImage: "brain")
             } description: {
-                Text(vm.error ?? String(localized: "未能取到 Workers AI 模型目录。"))
+                Text(vm.error ?? AppLocalization.string(localized: "未能取到 Workers AI 模型目录。"))
             }
         } else {
             let groups = filteredGroups(vm)
             if groups.isEmpty {
-                ContentUnavailableView.search(text: searchText)
+                OCContentUnavailableView.search(text: searchText)
             } else {
                 List {
                     ForEach(groups, id: \.task) { group in
@@ -103,18 +107,19 @@ struct WorkersAIView: View {
 // MARK: - 模型详情 + 文本生成 Playground
 
 private struct AIModelDetailSheet: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let session: SessionStore
     let model: AIModel
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(AuthManager.self) private var auth
-    @State private var playVM: AIPlaygroundViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var playVM: AIPlaygroundViewModel
 
     init(session: SessionStore, model: AIModel) {
         self.session = session
         self.model = model
-        _playVM = State(initialValue: AIPlaygroundViewModel(
+        _playVM = StateObject(wrappedValue: AIPlaygroundViewModel(
             service: session.workersAIService,
             accountId: session.selectedAccount?.id,
             model: model
@@ -125,15 +130,16 @@ private struct AIModelDetailSheet: View {
     private var hasAIWrite: Bool { auth.hasScope("ai.write") }
 
     var body: some View {
-        @Bindable var playVM = playVM
+
+        let _ = preferences.languageRaw
         NavigationStack {
             List {
                 Section {
                     if let desc = model.description, !desc.isEmpty {
                         Text(desc).font(.callout)
                     }
-                    if !model.taskName.isEmpty { LabeledContent("任务", value: model.taskName) }
-                    LabeledContent("模型") {
+                    if !model.taskName.isEmpty { LabeledContent(AppLocalization.string(localized: "任务"), value: model.taskName) }
+                    LabeledContent(AppLocalization.string(localized: "模型")) {
                         Text(model.name ?? model.id).font(.caption.monospaced())
                             .foregroundStyle(.secondary).lineLimit(2).truncationMode(.middle)
                             .textSelection(.enabled)
@@ -150,15 +156,15 @@ private struct AIModelDetailSheet: View {
                                 ReauthorizeButton(sessionId: sessionId, scopes: ["ai.write"])
                             }
                         } header: {
-                            Text("试运行")
+                            Text.ocLocalized("试运行")
                         } footer: {
-                            Text("试运行文本生成模型需要 Workers AI 写权限（ai.write）。点上方按钮一键补齐授权，无需退出登录。")
+                            Text.ocLocalized("试运行文本生成模型需要 Workers AI 写权限（ai.write）。点上方按钮一键补齐授权，无需退出登录。")
                         }
                         .glassRow()
                     }
                 } else {
                     Section {} footer: {
-                        Text("该模型的输入/输出格式与文本生成不同，暂不支持在 App 内试运行。")
+                        Text.ocLocalized("该模型的输入/输出格式与文本生成不同，暂不支持在 App 内试运行。")
                     }
                 }
             }
@@ -167,7 +173,7 @@ private struct AIModelDetailSheet: View {
             .navigationTitle(model.shortName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(AppLocalization.string(localized: "完成")) { dismiss() } }
             }
         }
     }
@@ -175,7 +181,7 @@ private struct AIModelDetailSheet: View {
     @ViewBuilder
     private func playground(text: Binding<String>, vm: AIPlaygroundViewModel) -> some View {
         Section {
-            TextField("输入提示词", text: text, axis: .vertical)
+            TextField(AppLocalization.string(localized: "输入提示词"), text: text, axis: .vertical)
                 .lineLimit(3...8)
             Button {
                 Task { await vm.run() }
@@ -185,16 +191,16 @@ private struct AIModelDetailSheet: View {
                     if vm.isRunning {
                         ProgressView()
                     } else {
-                        Label("运行", systemImage: "play.fill").fontWeight(.semibold)
+                        Label(AppLocalization.string(localized: "运行"), systemImage: "play.fill").fontWeight(.semibold)
                     }
                     Spacer()
                 }
             }
             .disabled(!vm.canRun)
         } header: {
-            Text("试运行")
+            Text.ocLocalized("试运行")
         } footer: {
-            Text("发送一条用户消息并显示模型回复。会消耗账号的 Workers AI 用量（每天 1 万 Neuron 免费额度）。")
+            Text.ocLocalized("发送一条用户消息并显示模型回复。会消耗账号的 Workers AI 用量（每天 1 万 Neuron 免费额度）。")
         }
         .glassRow()
 
@@ -208,7 +214,7 @@ private struct AIModelDetailSheet: View {
                     Text(vm.output).font(.callout).textSelection(.enabled)
                 }
             } header: {
-                Text("输出")
+                Text.ocLocalized("输出")
             }
             .glassRow()
         }

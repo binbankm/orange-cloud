@@ -12,8 +12,9 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct PagesDeployView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    let viewModel: PagesDeployViewModel
+    @ObservedObject var viewModel: PagesDeployViewModel
     let onSuccess: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -49,6 +50,8 @@ struct PagesDeployView: View {
     private var canDeploy: Bool { !filesToDeploy.isEmpty && !viewModel.isDeploying }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
@@ -72,7 +75,7 @@ struct PagesDeployView: View {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("部署")
+            .ocNavigationTitle("部署")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -159,8 +162,8 @@ struct PagesDeployView: View {
             Text("文件")
         } footer: {
             Text(pickedFiles.isEmpty
-                 ? String(localized: "可选单个 ZIP（设备端自动解包）或多个静态文件。ZIP 内若有统一顶层目录会自动去掉。")
-                 : String(localized: "共 \(pickedFiles.count) 个文件，将作为一次新部署上传。"))
+                 ? AppLocalization.string(localized: "可选单个 ZIP（设备端自动解包）或多个静态文件。ZIP 内若有统一顶层目录会自动去掉。")
+                 : AppLocalization.string(localized: "共 \(pickedFiles.count) 个文件，将作为一次新部署上传。"))
         }
     }
 
@@ -184,11 +187,11 @@ struct PagesDeployView: View {
     private var phaseLabel: String {
         switch viewModel.phase {
         case .idle:      ""
-        case .hashing:   String(localized: "正在计算文件指纹…")
-        case .uploading: String(localized: "正在上传资源 \(viewModel.uploadedCount)/\(viewModel.totalToUpload)…")
-        case .creating:  String(localized: "正在创建部署…")
-        case .done:      String(localized: "部署已创建")
-        case .failed:    String(localized: "部署失败")
+        case .hashing:   AppLocalization.string(localized: "正在计算文件指纹…")
+        case .uploading: AppLocalization.string(localized: "正在上传资源 \(viewModel.uploadedCount)/\(viewModel.totalToUpload)…")
+        case .creating:  AppLocalization.string(localized: "正在创建部署…")
+        case .done:      AppLocalization.string(localized: "部署已创建")
+        case .failed:    AppLocalization.string(localized: "部署失败")
         }
     }
 
@@ -232,9 +235,9 @@ struct PagesDeployView: View {
             }
             pickedFiles = PagesDeployViewModel.normalize(collected)
             if !failures.isEmpty {
-                pickError = String(localized: "部分文件无法读取：") + "\n" + failures.joined(separator: "\n")
+                pickError = AppLocalization.string(localized: "部分文件无法读取：") + "\n" + failures.joined(separator: "\n")
             } else if pickedFiles.isEmpty {
-                pickError = String(localized: "未找到可部署的文件")
+                pickError = AppLocalization.string(localized: "未找到可部署的文件")
             }
         }
     }

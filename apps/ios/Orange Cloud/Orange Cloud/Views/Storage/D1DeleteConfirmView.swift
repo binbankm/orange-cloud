@@ -12,7 +12,7 @@ import SwiftUI
 struct D1DeleteConfirmView: View {
 
     let database: D1Database
-    let viewModel: D1DatabaseListViewModel
+    @ObservedObject var viewModel: D1DatabaseListViewModel
     let accountId: String
 
     @Environment(\.dismiss) private var dismiss
@@ -89,7 +89,7 @@ struct D1DeleteConfirmView: View {
                     .disabled(!canDelete)
                 }
             }
-            .navigationTitle("删除数据库")
+            .ocNavigationTitle("删除数据库")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

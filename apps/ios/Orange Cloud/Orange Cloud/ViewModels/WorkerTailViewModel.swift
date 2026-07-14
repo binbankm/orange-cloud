@@ -7,12 +7,11 @@
 //
 
 import Foundation
-import Observation
+import Combine
 import ActivityKit
 
-@Observable
 @MainActor
-final class WorkerTailViewModel {
+final class WorkerTailViewModel: ObservableObject {
 
     enum ConnectionState: Equatable {
         case idle
@@ -28,9 +27,9 @@ final class WorkerTailViewModel {
         let text: String
     }
 
-    private(set) var lines: [LogLine] = []
-    private(set) var state: ConnectionState = .idle
-    var isPaused = false       // 暂停 = 丢弃新事件，连接保持
+    @Published private(set) var lines: [LogLine] = []
+    @Published private(set) var state: ConnectionState = .idle
+    @Published var isPaused = false
 
     private let service: WorkerTailService
     private let accountId: String
@@ -43,7 +42,8 @@ final class WorkerTailViewModel {
     private var userStopped = false
 
     // Live Activity（Dynamic Island + 锁屏）
-    private var activity: Activity<TailActivityAttributes>?
+    // Live Activity 自 iOS 16.1 提供；用类型擦除让 iOS 16.0 仍可加载实时日志。
+    private var activity: Any?
     private var eventCount = 0
     private var lastActivityUpdate = Date.distantPast
     private var heartbeatTask: Task<Void, Never>?
@@ -129,7 +129,7 @@ final class WorkerTailViewModel {
                 await connect()
             }
         } else {
-            state = .disconnected(reason: error?.localizedDescription ?? String(localized: "连接已断开"))
+            state = .disconnected(reason: error?.localizedDescription ?? AppLocalization.string(localized: "连接已断开"))
             updateActivity(force: true)
         }
     }
@@ -201,6 +201,7 @@ final class WorkerTailViewModel {
     // MARK: - Live Activity
 
     private func startActivityIfNeeded() {
+        guard #available(iOS 16.2, *) else { return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         if activity == nil {
             eventCount = 0
@@ -218,7 +219,7 @@ final class WorkerTailViewModel {
     /// 节流更新：默认 1 秒一次，连接状态变化时强制。
     /// 每次把 staleDate 推后 staleWindow——前台持续刷新即永不停滞，一旦挂起停更便到点自动置灰。
     private func updateActivity(force: Bool = false) {
-        guard let activity else { return }
+        guard #available(iOS 16.2, *), let activity = activity as? Activity<TailActivityAttributes> else { return }
         guard force || Date().timeIntervalSince(lastActivityUpdate) > 1 else { return }
         lastActivityUpdate = Date()
         let content = makeContent(connected: state == .connected)
@@ -227,7 +228,7 @@ final class WorkerTailViewModel {
 
     /// 进后台时调用：staleDate=now 让系统立刻把卡片置灰，呈「已暂停」。
     private func markActivityStale() {
-        guard let activity else { return }
+        guard #available(iOS 16.2, *), let activity = activity as? Activity<TailActivityAttributes> else { return }
         lastActivityUpdate = Date()
         let content = ActivityContent(
             state: TailActivityAttributes.ContentState(
@@ -240,6 +241,7 @@ final class WorkerTailViewModel {
         Task { await activity.update(content) }
     }
 
+    @available(iOS 16.2, *)
     private func makeContent(connected: Bool) -> ActivityContent<TailActivityAttributes.ContentState> {
         ActivityContent(
             state: TailActivityAttributes.ContentState(
@@ -273,7 +275,10 @@ final class WorkerTailViewModel {
 
     private func endActivity() {
         stopHeartbeat()
-        guard let activity else { return }
+        guard #available(iOS 16.2, *), let activity = activity as? Activity<TailActivityAttributes> else {
+            self.activity = nil
+            return
+        }
         self.activity = nil
         Task { await activity.end(nil, dismissalPolicy: .immediate) }
     }

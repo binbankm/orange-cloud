@@ -6,17 +6,16 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class WorkerTriggersViewModel {
+final class WorkerTriggersViewModel: ObservableObject {
 
-    private(set) var schedules: [WorkerSchedule] = []
-    private(set) var loaded = false
-    var isLoading = false
-    var isSaving  = false
-    var error: String?
+    @Published private(set) var schedules: [WorkerSchedule] = []
+    @Published private(set) var loaded = false
+    @Published var isLoading = false
+    @Published var isSaving  = false
+    @Published var error: String?
 
     private let service: WorkerService
     let accountId:  String

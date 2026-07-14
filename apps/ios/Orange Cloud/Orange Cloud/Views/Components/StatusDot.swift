@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct StatusDot: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let status: String
     var size: CGFloat = 8
@@ -34,13 +35,15 @@ struct StatusDot: View {
     /// 读屏标签，与 ZoneDetailView.statusText 用同一组文案
     private var label: String {
         switch status {
-        case "active":                  String(localized: "已启用")
-        case "pending", "initializing": String(localized: "待激活")
-        default:                        String(localized: "已暂停")
+        case "active":                  AppLocalization.string(localized: "已启用")
+        case "pending", "initializing": AppLocalization.string(localized: "待激活")
+        default:                        AppLocalization.string(localized: "已暂停")
         }
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if differentiateWithoutColor {
                 Image(systemName: glyph)

@@ -15,9 +15,9 @@ nonisolated enum ResourceSort: String, CaseIterable {
 
     var label: String {
         switch self {
-        case .name:     String(localized: "默认（名称）")
-        case .created:  String(localized: "创建日期")
-        case .modified: String(localized: "最近更新")
+        case .name:     AppLocalization.string(localized: "默认（名称）")
+        case .created:  AppLocalization.string(localized: "创建日期")
+        case .modified: AppLocalization.string(localized: "最近更新")
         }
     }
 
@@ -40,9 +40,12 @@ nonisolated enum ResourceSort: String, CaseIterable {
 
 /// 工具栏排序菜单（当前选中项自动打勾）
 struct ResourceSortMenu: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     @Binding var sort: ResourceSort
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Menu {
             Picker("排序", selection: $sort) {
                 ForEach(ResourceSort.allCases, id: \.self) { option in

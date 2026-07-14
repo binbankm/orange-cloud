@@ -9,17 +9,18 @@
 import SwiftUI
 
 struct MonitorListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: MonitorListViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: MonitorListViewModel
     @State private var editorTarget: MonitorEditorTarget?
     @State private var monitorToDelete: Monitor?
 
     init(session: SessionStore) {
         self.session = session
-        _viewModel = State(initialValue: MonitorListViewModel(
+        _viewModel = StateObject(wrappedValue: MonitorListViewModel(
             service: session.loadBalancerService,
             accountId: session.selectedAccount?.id ?? ""
         ))
@@ -28,16 +29,18 @@ struct MonitorListView: View {
     private var canWrite: Bool { auth.hasScope("load-balancing-monitors-and-pools.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.isLoading && !viewModel.loaded {
                 SkeletonList(rows: 4, icon: .none, trailing: true)
             } else if viewModel.monitors.isEmpty {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("没有健康监测", systemImage: "waveform.path.ecg")
                 } description: {
                     Text(canWrite
-                         ? String(localized: "健康监测定期探测源站，决定其是否健康可用。点右上角 + 创建。")
-                         : String(localized: "此账号暂无健康监测。"))
+                         ? AppLocalization.string(localized: "健康监测定期探测源站，决定其是否健康可用。点右上角 + 创建。")
+                         : AppLocalization.string(localized: "此账号暂无健康监测。"))
                 } actions: {
                     if canWrite {
                         Button("新建监测") { editorTarget = MonitorEditorTarget(monitor: nil) }
@@ -59,8 +62,8 @@ struct MonitorListView: View {
                         }
                     } footer: {
                         Text(canWrite
-                             ? String(localized: "点按编辑，右滑删除。被源站池引用的监测无法删除。")
-                             : String(localized: "当前授权仅限读取。"))
+                             ? AppLocalization.string(localized: "点按编辑，右滑删除。被源站池引用的监测无法删除。")
+                             : AppLocalization.string(localized: "当前授权仅限读取。"))
                     }
                     .glassRow()
                 }
@@ -69,7 +72,7 @@ struct MonitorListView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("健康监测")
+        .ocNavigationTitle("健康监测")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -80,7 +83,7 @@ struct MonitorListView: View {
             }
         }
         .task { await viewModel.load() }
-        .sensoryFeedback(.success, trigger: viewModel.didMutate)
+        .ocSensoryFeedback(.success, trigger: viewModel.didMutate)
         .sheet(item: $editorTarget) { target in
             MonitorEditorView(existing: target.monitor, viewModel: viewModel)
         }
@@ -124,7 +127,7 @@ struct MonitorListView: View {
                     }
                 }
                 if let interval = monitor.interval {
-                    Text(String(localized: "每 \(interval) 秒探测一次"))
+                    Text(AppLocalization.string(localized: "每 \(interval) 秒探测一次"))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -141,9 +144,10 @@ struct MonitorEditorTarget: Identifiable {
 // MARK: - 健康监测编辑器
 
 private struct MonitorEditorView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let existing: Monitor?
-    let viewModel: MonitorListViewModel
+    @ObservedObject var viewModel: MonitorListViewModel
 
     @Environment(\.dismiss) private var dismiss
 
@@ -186,6 +190,8 @@ private struct MonitorEditorView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section("类型") {
@@ -212,8 +218,8 @@ private struct MonitorEditorView: View {
                 }
 
                 Section {
-                    numberField("探测间隔", text: $interval, unit: String(localized: "秒"))
-                    numberField("超时", text: $timeout, unit: String(localized: "秒"))
+                    numberField("探测间隔", text: $interval, unit: AppLocalization.string(localized: "秒"))
+                    numberField("超时", text: $timeout, unit: AppLocalization.string(localized: "秒"))
                     numberField("重试次数", text: $retries, unit: "")
                     numberField("端口（可选）", text: $port, unit: "")
                 } header: {

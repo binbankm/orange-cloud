@@ -12,6 +12,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct WorkerUploadView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     enum Mode: Equatable {
         case create
@@ -31,7 +32,7 @@ struct WorkerUploadView: View {
     }
 
     let mode: Mode
-    let viewModel: WorkerUploadViewModel
+    @ObservedObject var viewModel: WorkerUploadViewModel
     let onSuccess: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -75,10 +76,12 @@ struct WorkerUploadView: View {
     }
 
     private var title: String {
-        isCreate ? String(localized: "新建 Worker") : String(localized: "更新代码")
+        isCreate ? AppLocalization.string(localized: "新建 Worker") : AppLocalization.string(localized: "更新代码")
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 if isCreate {
@@ -126,7 +129,7 @@ struct WorkerUploadView: View {
                         if viewModel.isUploading {
                             ProgressView()
                         } else {
-                            Text(isCreate ? String(localized: "创建") : String(localized: "部署")).fontWeight(.semibold)
+                            Text(isCreate ? AppLocalization.string(localized: "创建") : AppLocalization.string(localized: "部署")).fontWeight(.semibold)
                         }
                     }
                     .disabled(!canSubmit)
@@ -176,8 +179,8 @@ struct WorkerUploadView: View {
                 .disabled(viewModel.isUploading)
             } footer: {
                 Text(isModule
-                     ? String(localized: "ES Module：export default { fetch }（推荐）。")
-                     : String(localized: "Service Worker：addEventListener(\"fetch\", …)。"))
+                     ? AppLocalization.string(localized: "ES Module：export default { fetch }（推荐）。")
+                     : AppLocalization.string(localized: "Service Worker：addEventListener(\"fetch\", …)。"))
             }
             Section {
                 TextEditor(text: $code)
@@ -258,8 +261,8 @@ struct WorkerUploadView: View {
                 Text("静态文件")
             } footer: {
                 Text(assets.isEmpty
-                     ? String(localized: "部署为纯静态站点（无 Worker 代码）。ZIP 会在设备端解包，统一顶层目录自动去掉。")
-                     : String(localized: "共 \(assets.count) 个文件。"))
+                     ? AppLocalization.string(localized: "部署为纯静态站点（无 Worker 代码）。ZIP 会在设备端解包，统一顶层目录自动去掉。")
+                     : AppLocalization.string(localized: "共 \(assets.count) 个文件。"))
             }
             Section {
                 Toggle("单页应用（SPA）", isOn: $spa).disabled(viewModel.isUploading)
@@ -299,7 +302,7 @@ struct WorkerUploadView: View {
 
     private func importCode(_ result: Result<[URL], Error>) {
         guard case .success(let urls) = result, let url = urls.first else { return }
-        guard let text = readText(url) else { importError = String(localized: "无法以文本读取该文件"); return }
+        guard let text = readText(url) else { importError = AppLocalization.string(localized: "无法以文本读取该文件"); return }
         code = text
         if isCreate, trimmedName.isEmpty {
             name = url.deletingPathExtension().lastPathComponent.lowercased()
@@ -344,9 +347,9 @@ struct WorkerUploadView: View {
         assets = PagesDeployViewModel.normalize(collected)
         if isCreate, trimmedName.isEmpty { name = "static-site" }
         if !failures.isEmpty {
-            importError = String(localized: "部分文件无法读取：") + "\n" + failures.joined(separator: "\n")
+            importError = AppLocalization.string(localized: "部分文件无法读取：") + "\n" + failures.joined(separator: "\n")
         } else if assets.isEmpty {
-            importError = String(localized: "未找到可部署的文件")
+            importError = AppLocalization.string(localized: "未找到可部署的文件")
         }
     }
 

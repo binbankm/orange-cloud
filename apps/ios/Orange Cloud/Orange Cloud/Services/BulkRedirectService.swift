@@ -97,12 +97,12 @@ struct BulkRedirectService {
             case "completed":
                 return
             case "failed":
-                throw APIError.cloudflareError(code: -1, message: op.error ?? String(localized: "批量操作失败"))
+                throw APIError.cloudflareError(code: -1, message: op.error ?? AppLocalization.string(localized: "批量操作失败"))
             default:
                 try await Task.sleep(nanoseconds: 800_000_000)   // 0.8s 后再查
             }
         }
-        throw APIError.cloudflareError(code: -1, message: String(localized: "批量操作超时，请稍后刷新查看结果"))
+        throw APIError.cloudflareError(code: -1, message: AppLocalization.string(localized: "批量操作超时，请稍后刷新查看结果"))
     }
 
     // MARK: - 启用规则（ruleset entrypoint，phase http_request_redirect）

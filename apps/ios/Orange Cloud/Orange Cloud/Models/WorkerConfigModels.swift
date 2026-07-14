@@ -124,19 +124,19 @@ nonisolated struct WorkerBinding: Codable, Identifiable, Hashable, Sendable {
     /// 人类可读的绑定类型标签
     var typeLabel: String {
         switch type {
-        case "plain_text":           String(localized: "变量")
+        case "plain_text":           AppLocalization.string(localized: "变量")
         case "secret_text",
-             "secrets_store_secret": String(localized: "密钥")
+             "secrets_store_secret": AppLocalization.string(localized: "密钥")
         case "kv_namespace":         "KV"
         case "d1":                   "D1"
         case "r2_bucket":            "R2"
-        case "queue":                String(localized: "队列")
+        case "queue":                AppLocalization.string(localized: "队列")
         case "durable_object_namespace": "Durable Object"
-        case "service":              String(localized: "Service 绑定")
+        case "service":              AppLocalization.string(localized: "Service 绑定")
         case "ai":                   "Workers AI"
         case "vectorize":            "Vectorize"
         case "analytics_engine":     "Analytics Engine"
-        case "browser":              String(localized: "浏览器渲染")
+        case "browser":              AppLocalization.string(localized: "浏览器渲染")
         default:                     type
         }
     }

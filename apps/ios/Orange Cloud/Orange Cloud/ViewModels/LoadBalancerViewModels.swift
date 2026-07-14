@@ -6,21 +6,20 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
 // MARK: - Load Balancer（zone）
 
-@Observable
 @MainActor
-final class LoadBalancerListViewModel {
+final class LoadBalancerListViewModel: ObservableObject {
 
-    private(set) var loadBalancers: [LoadBalancer] = []
-    private(set) var pools: [Pool] = []       // 供编辑器选择 default/fallback 池 + 名称解析
-    var isLoading = false
-    var loaded = false
-    var isMutating = false
-    var error: String?
-    var didMutate = false
+    @Published private(set) var loadBalancers: [LoadBalancer] = []
+    @Published private(set) var pools: [Pool] = []
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var isMutating = false
+    @Published var error: String?
+    @Published var didMutate = false
 
     private let service: LoadBalancerService
     let zoneId: String
@@ -111,18 +110,17 @@ final class LoadBalancerListViewModel {
 
 // MARK: - 源站池（account）
 
-@Observable
 @MainActor
-final class PoolListViewModel {
+final class PoolListViewModel: ObservableObject {
 
-    private(set) var pools: [Pool] = []
-    private(set) var monitors: [Monitor] = []       // 供池编辑器选择监测
-    private(set) var healthByPool: [String: PoolHealthResponse] = [:]
-    var isLoading = false
-    var loaded = false
-    var isMutating = false
-    var error: String?
-    var didMutate = false
+    @Published private(set) var pools: [Pool] = []
+    @Published private(set) var monitors: [Monitor] = []
+    @Published private(set) var healthByPool: [String: PoolHealthResponse] = [:]
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var isMutating = false
+    @Published var error: String?
+    @Published var didMutate = false
 
     private let service: LoadBalancerService
     let accountId: String
@@ -168,13 +166,13 @@ final class PoolListViewModel {
     }
 
     func monitorName(_ id: String?) -> String {
-        guard let id, !id.isEmpty else { return String(localized: "无") }
+        guard let id, !id.isEmpty else { return AppLocalization.string(localized: "无") }
         return monitors.first { $0.id == id }?.summary ?? id
     }
 
     func healthText(for pool: Pool) -> String? {
         guard let h = healthByPool[pool.id], h.totalCount > 0 else { return nil }
-        return String(localized: "\(h.healthyCount)/\(h.totalCount) 数据中心健康")
+        return AppLocalization.string(localized: "\(h.healthyCount)/\(h.totalCount) 数据中心健康")
     }
 
     func save(poolId: String?, body: PoolUpdate) async -> Bool {
@@ -234,16 +232,15 @@ final class PoolListViewModel {
 
 // MARK: - 健康监测（account）
 
-@Observable
 @MainActor
-final class MonitorListViewModel {
+final class MonitorListViewModel: ObservableObject {
 
-    private(set) var monitors: [Monitor] = []
-    var isLoading = false
-    var loaded = false
-    var isMutating = false
-    var error: String?
-    var didMutate = false
+    @Published private(set) var monitors: [Monitor] = []
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var isMutating = false
+    @Published var error: String?
+    @Published var didMutate = false
 
     private let service: LoadBalancerService
     let accountId: String

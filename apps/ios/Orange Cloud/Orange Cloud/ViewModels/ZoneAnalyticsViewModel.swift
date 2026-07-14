@@ -7,21 +7,20 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class ZoneAnalyticsViewModel {
+final class ZoneAnalyticsViewModel: ObservableObject {
 
-    var selectedRange: AnalyticsTimeRange = .last24h
-    var isLoading = false
-    var error: String?
-    private(set) var points: [TrafficDataPoint] = []
-    private(set) var previousPoints: [TrafficDataPoint] = []
+    @Published var selectedRange: AnalyticsTimeRange = .last24h
+    @Published var isLoading = false
+    @Published var error: String?
+    @Published private(set) var points: [TrafficDataPoint] = []
+    @Published private(set) var previousPoints: [TrafficDataPoint] = []
 
     // 全球流量地图：按国家/地区聚合，独立加载（仅 Pro 触发），与主时间序列分离
-    var isLoadingCountries = false
-    private(set) var countries: [CountryTraffic] = []
+    @Published var isLoadingCountries = false
+    @Published private(set) var countries: [CountryTraffic] = []
     private var countryCache: [AnalyticsTimeRange: [CountryTraffic]] = [:]
 
     private var cache: [AnalyticsTimeRange: (current: [TrafficDataPoint], previous: [TrafficDataPoint])] = [:]
@@ -128,9 +127,9 @@ final class ZoneAnalyticsViewModel {
 
     // MARK: - 设备端 AI 摘要（只读，Pro）
 
-    var isSummarizing = false
-    var summaryError: String?
-    private(set) var insight: TrafficInsight?
+    @Published var isSummarizing = false
+    @Published var summaryError: String?
+    @Published private(set) var insight: TrafficInsight?
 
     /// 换时间范围 / 刷新时清空旧摘要，避免摘要与当前数据对不上。
     func clearInsight() {

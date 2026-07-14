@@ -7,13 +7,15 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct DeveloperHubView: View {
 
-    let session: SessionStore
+    @ObservedObject var session: SessionStore
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     var body: some View {
+        // UIKit 会缓存导航栏标题；语言更改时让当前 NavigationStack 立即重算标题和返回项。
+        let _ = preferences.languageRaw
         // NavigationStack 常驻，账号切换只重建栈内内容（.id 在栈内、挂在 hubList 上）。
         // **不要把 .id(账号) 挪回栈外或 MainTabView**：selectedAccount 可能在本 Tab 可见时
         // 才翻转，重建可见 NavigationStack 在 iOS 17.0.x 导航栏硬断言必崩（1.8.2(24) 复发根因）。
@@ -26,7 +28,7 @@ struct DeveloperHubView: View {
     private var hubList: some View {
             List {
                 // List 内由系统提供 NavigationLink chevron，勿再传 showsChevron（否则双箭头）。
-                Section("计算") {
+                Section(AppLocalization.string(localized: "计算")) {
                     // Workers 免费（按 scope 门控，不走 Pro）。
                     // 用值式导航：Workers 列表点击行还要继续 push 到详情，必须走单一宿主栈 +
                     // 栈根 navdest（见下方 .navigationDestination），eager 形态的目的页内部 push 会失灵/错乱。
@@ -47,7 +49,7 @@ struct DeveloperHubView: View {
 
                 // 以下入口的目的页均为叶子（内部只开 sheet、不再 push），List 行内 eager
                 // 形态实测安全，保留；若哪个目的页日后加了内层 push，必须改值式。
-                Section("数据与消息") {
+                Section(AppLocalization.string(localized: "数据与消息")) {
                     ProGatedNavigationLink(
                         label: "Queues", systemImage: "tray.2",
                         requiredScope: "queues.read", feature: .queues
@@ -63,7 +65,7 @@ struct DeveloperHubView: View {
                 }
                 .glassRow()
 
-                Section("AI") {
+                Section(AppLocalization.string(localized: "AI")) {
                     ProGatedNavigationLink(
                         label: "Workers AI", systemImage: "brain",
                         requiredScope: "ai.read", feature: .workersAI
@@ -77,7 +79,7 @@ struct DeveloperHubView: View {
             }
             .daybreakList()
             .background { SkyBackground() }
-            .navigationTitle("开发者平台")
+            .ocNavigationTitle("开发者平台")
             .navigationBarTitleDisplayMode(.inline)
             // Workers 列表与其详情都挂在宿主栈根：列表入口走 DevHubRoute、行点击走 CachedWorkerScript，
             // 单一栈、不嵌套，逐级 push 正常（详见 WorkerListView 注释）。

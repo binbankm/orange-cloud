@@ -30,7 +30,7 @@
 		"title1": "Cloudflare’iniz,",
 		"title2": "bir bakışta",
 		"sub": "Alan adları, DNS, analizler, Workers günlükleri ve depolama; günün saatini izleyen bir gökyüzünde. Resmi OAuth oturum açma — API anahtarı yapıştırmak yok.",
-		"note": "iOS 17.0+ / Android 9+ · Ücretsiz indirme, isteğe bağlı Pro"
+		"note": "iOS 16.0+ / Android 9+ · Ücretsiz indirme, isteğe bağlı Pro"
 	},
 	"phone": {
 		"greetMorning": "Günaydın, Jiamin",
@@ -156,13 +156,13 @@
 	"cta": {
 		"title": "Cloudflare’i cebinize koyun",
 		"sub": "Bu geceki gökyüzü uygulamada sizi bekliyor.",
-		"requirement": "iOS 17.0+ veya Android 9+ gerektirir · iPhone, iPad ve Android"
+		"requirement": "iOS 16.0+ veya Android 9+ gerektirir · iPhone, iPad ve Android"
 	},
 	"changelog": {
 		"title": "Sürüm geçmişi",
 		"sub": "Orange Cloud artık App Store’da. İşte sürüm geçmişi — veya yaklaşan sürümlere erken erişim için TestFlight’a katılın.",
 		"tfButton": "TestFlight’a katıl",
-		"tfNote": "iOS 17.0 veya üzeri gerektirir · yalnızca Apple cihazları",
+		"tfNote": "iOS 16.0 veya üzeri gerektirir · yalnızca Apple cihazları",
 		"androidSoon": "Android uygulaması yakında Google Play’de",
 		"statusInReview": "İncelemede"
 	},

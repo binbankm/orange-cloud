@@ -27,11 +27,11 @@ nonisolated enum ZoneRulePhase: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .singleRedirect: String(localized: "单条重定向")
-        case .origin:         String(localized: "源站规则")
-        case .config:         String(localized: "配置规则")
-        case .compression:    String(localized: "压缩规则")
-        case .customErrors:   String(localized: "自定义错误")
+        case .singleRedirect: AppLocalization.string(localized: "单条重定向")
+        case .origin:         AppLocalization.string(localized: "源站规则")
+        case .config:         AppLocalization.string(localized: "配置规则")
+        case .compression:    AppLocalization.string(localized: "压缩规则")
+        case .customErrors:   AppLocalization.string(localized: "自定义错误")
         }
     }
 
@@ -91,7 +91,7 @@ nonisolated struct ZoneRule: Codable, Identifiable, Sendable {
     /// 列表行一句话摘要（能识别的常见形态给友好文案，其余回退参数键名列表）
     var summary: String {
         guard case .object(let params)? = actionParameters else {
-            return action ?? String(localized: "查看详情")
+            return action ?? AppLocalization.string(localized: "查看详情")
         }
         // Single Redirect：target_url + status_code
         if case .object(let from)? = params["from_value"] {
@@ -105,11 +105,11 @@ nonisolated struct ZoneRule: Codable, Identifiable, Sendable {
         }
         // Origin：host_header / origin
         if case .string(let host)? = params["host_header"] {
-            return String(localized: "Host：\(host)")
+            return AppLocalization.string(localized: "Host：\(host)")
         }
         if case .object(let origin)? = params["origin"] {
-            if case .string(let host)? = origin["host"] { return String(localized: "源站：\(host)") }
-            if case .int(let port)? = origin["port"] { return String(localized: "源站端口：\(port)") }
+            if case .string(let host)? = origin["host"] { return AppLocalization.string(localized: "源站：\(host)") }
+            if case .int(let port)? = origin["port"] { return AppLocalization.string(localized: "源站端口：\(port)") }
         }
         // Compression：algorithms
         if case .array(let algos)? = params["algorithms"] {
@@ -181,7 +181,7 @@ nonisolated struct PageRule: Codable, Identifiable, Sendable {
     /// 动作摘要（键名列表）
     var actionsLabel: String {
         let names = (actions ?? []).map(\.id)
-        return names.isEmpty ? String(localized: "无动作") : names.joined(separator: " · ")
+        return names.isEmpty ? AppLocalization.string(localized: "无动作") : names.joined(separator: " · ")
     }
 }
 

@@ -6,7 +6,7 @@
 //  WAF / 分析摘要 / DNS 生成等各处 AI 能力共用，避免重复同一套 #available 守卫与错误映射。
 //
 //  全部离线、免费、不出设备，与本 App「不用贴 API Token」的隐私定位一致。
-//  基线 iOS 17：所有 FoundationModels API 走 #available(iOS 26) 守卫，老设备整套 AI 入口静默隐藏。
+//  基线 iOS 16：所有 FoundationModels API 走 #available(iOS 26) 守卫，老设备整套 AI 入口静默隐藏。
 //
 
 import Foundation
@@ -35,15 +35,15 @@ nonisolated enum OnDeviceAI {
     static func friendlyMessage(for error: LanguageModelSession.GenerationError) -> String {
         switch error {
         case .guardrailViolation:
-            return String(localized: "这条描述被安全过滤拦下了，换个说法再试。")
+            return AppLocalization.string(localized: "这条描述被安全过滤拦下了，换个说法再试。")
         case .unsupportedLanguageOrLocale:
-            return String(localized: "当前语言暂不被设备端模型支持，可改用英文描述。")
+            return AppLocalization.string(localized: "当前语言暂不被设备端模型支持，可改用英文描述。")
         case .exceededContextWindowSize:
-            return String(localized: "描述太长了，精简后再试。")
+            return AppLocalization.string(localized: "描述太长了，精简后再试。")
         case .assetsUnavailable, .rateLimited:
-            return String(localized: "设备端模型暂时不可用，请稍后再试。")
+            return AppLocalization.string(localized: "设备端模型暂时不可用，请稍后再试。")
         default:
-            return String(localized: "没能生成结果，换个说法再试试。")
+            return AppLocalization.string(localized: "没能生成结果，换个说法再试试。")
         }
     }
 }
@@ -57,8 +57,8 @@ nonisolated enum OnDeviceAIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unsupported:       String(localized: "此设备不支持设备端 AI（需要 iOS 26 及支持 Apple 智能的机型）。")
-        case .emptyResult:       String(localized: "没能理解这条描述，换个说法再试试。")
+        case .unsupported:       AppLocalization.string(localized: "此设备不支持设备端 AI（需要 iOS 26 及支持 Apple 智能的机型）。")
+        case .emptyResult:       AppLocalization.string(localized: "没能理解这条描述，换个说法再试试。")
         case .generation(let m): m
         }
     }

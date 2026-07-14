@@ -10,7 +10,7 @@ import SwiftUI
 
 struct D1CreateView: View {
 
-    let viewModel: D1DatabaseListViewModel
+    @ObservedObject var viewModel: D1DatabaseListViewModel
     let accountId: String
 
     @Environment(\.dismiss) private var dismiss
@@ -61,7 +61,7 @@ struct D1CreateView: View {
                     }
                 }
             }
-            .navigationTitle("创建数据库")
+            .ocNavigationTitle("创建数据库")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

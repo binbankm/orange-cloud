@@ -6,17 +6,16 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class AuditLogViewModel {
+final class AuditLogViewModel: ObservableObject {
 
-    private(set) var entries: [IdentifiedAuditEntry] = []
-    private(set) var canLoadMore = false
-    var isLoading = false
-    var isLoadingMore = false
-    var error: String?
+    @Published private(set) var entries: [IdentifiedAuditEntry] = []
+    @Published private(set) var canLoadMore = false
+    @Published var isLoading = false
+    @Published var isLoadingMore = false
+    @Published var error: String?
 
     private let service: AuditLogService
     private let accountId: String

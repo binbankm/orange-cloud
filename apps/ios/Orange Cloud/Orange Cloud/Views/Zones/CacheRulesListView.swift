@@ -9,16 +9,17 @@
 import SwiftUI
 
 struct CacheRulesListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: CacheRulesViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: CacheRulesViewModel
     @State private var showDenied = false
     @State private var editorTarget: EditorTarget?
     @State private var ruleToDelete: CacheRule?
     @State private var searchText = ""
 
     init(zoneId: String, session: SessionStore) {
-        _viewModel = State(initialValue: CacheRulesViewModel(
+        _viewModel = StateObject(wrappedValue: CacheRulesViewModel(
             service: session.cacheRuleService, zoneId: zoneId
         ))
     }
@@ -34,16 +35,18 @@ struct CacheRulesListView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.isLoading && !viewModel.loaded {
                 SkeletonList(rows: 5, icon: .none, trailing: true)
             } else if viewModel.rules.isEmpty {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("没有缓存规则", systemImage: "bolt.horizontal")
                 } description: {
                     Text(canWrite
-                         ? String(localized: "缓存规则可按 URL 覆盖边缘 / 浏览器缓存时长，或对匹配请求绕过缓存。点右上角 + 创建第一条。")
-                         : String(localized: "此域名暂时没有缓存规则。当前授权仅限读取（cache-settings.read）。"))
+                         ? AppLocalization.string(localized: "缓存规则可按 URL 覆盖边缘 / 浏览器缓存时长，或对匹配请求绕过缓存。点右上角 + 创建第一条。")
+                         : AppLocalization.string(localized: "此域名暂时没有缓存规则。当前授权仅限读取（cache-settings.read）。"))
                 } actions: {
                     if canWrite {
                         Button("添加规则") { editorTarget = EditorTarget(rule: nil) }
@@ -53,7 +56,7 @@ struct CacheRulesListView: View {
                     }
                 }
             } else if filteredRules.isEmpty {
-                ContentUnavailableView.search(text: searchText)
+                OCContentUnavailableView.search(text: searchText)
             } else {
                 List {
                     Section {
@@ -64,7 +67,7 @@ struct CacheRulesListView: View {
                                         Button {
                                             Task { await viewModel.toggle(rule: rule, enabled: !(rule.enabled ?? true)) }
                                         } label: {
-                                            Label(rule.enabled == false ? String(localized: "启用") : String(localized: "停用"),
+                                            Label(rule.enabled == false ? AppLocalization.string(localized: "启用") : AppLocalization.string(localized: "停用"),
                                                   systemImage: rule.enabled == false ? "play" : "pause")
                                         }
                                         .tint(.orange)
@@ -80,8 +83,8 @@ struct CacheRulesListView: View {
                         }
                     } footer: {
                         Text(canWrite
-                             ? String(localized: "规则按从上到下顺序执行；点按编辑，左滑启停，右滑删除。")
-                             : String(localized: "当前授权仅限读取（cache-settings.read），无法修改规则。"))
+                             ? AppLocalization.string(localized: "规则按从上到下顺序执行；点按编辑，左滑启停，右滑删除。")
+                             : AppLocalization.string(localized: "当前授权仅限读取（cache-settings.read），无法修改规则。"))
                     }
                     .glassRow()
                 }
@@ -90,7 +93,7 @@ struct CacheRulesListView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("缓存规则")
+        .ocNavigationTitle("缓存规则")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "搜索规则")
         .toolbar {
@@ -110,7 +113,7 @@ struct CacheRulesListView: View {
             titleVisibility: .visible
         ) {
             if let rule = ruleToDelete {
-                Button("删除「\(rule.description ?? String(localized: "未命名规则"))」", role: .destructive) {
+                Button("删除「\(rule.description ?? AppLocalization.string(localized: "未命名规则"))」", role: .destructive) {
                     Task { await viewModel.delete(rule: rule) }
                 }
             }
@@ -143,7 +146,7 @@ struct CacheRulesListView: View {
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(rule.description ?? String(localized: "未命名规则"))
+                    Text(rule.description ?? AppLocalization.string(localized: "未命名规则"))
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)

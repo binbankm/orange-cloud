@@ -9,14 +9,16 @@
 import SwiftUI
 
 struct EmailRoutingView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let zoneId: String
     let zoneName: String
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
 
-    @State private var vm: EmailRoutingViewModel?
+    @StateObject private var vmStore = OptionalObservableObjectStore()
+    private var vm: EmailRoutingViewModel? { vmStore.value(as: EmailRoutingViewModel.self) }
     @State private var editingRule: EmailRoutingRule?
     @State private var showNewRule = false
     @State private var showAddAddress = false
@@ -25,6 +27,8 @@ struct EmailRoutingView: View {
     private var canEditAddresses: Bool { auth.hasScope("email-routing-address.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if let vm {
                 content(vm)
@@ -33,7 +37,7 @@ struct EmailRoutingView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("Email Routing")
+        .ocNavigationTitle("Email Routing")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await session.ensureAccounts()
@@ -42,7 +46,7 @@ struct EmailRoutingView: View {
             let model = EmailRoutingViewModel(
                 service: session.emailRoutingService, zoneId: zoneId, accountId: accountId
             )
-            vm = model
+            vmStore.set(model)
             await model.load()
         }
     }
@@ -174,7 +178,7 @@ struct EmailRoutingView: View {
             TintIcon(systemImage: rule.isCatchAll ? "tray.full" : "arrow.turn.down.right",
                      color: rule.isEnabled ? .ocOrange : .gray)
             VStack(alignment: .leading, spacing: 3) {
-                Text(rule.isCatchAll ? String(localized: "全部邮件（catch-all）") : (rule.matchAddress ?? rule.name ?? "—"))
+                Text(rule.isCatchAll ? AppLocalization.string(localized: "全部邮件（catch-all）") : (rule.matchAddress ?? rule.name ?? "—"))
                     .font(.callout)
                     .lineLimit(1)
                 Text(rule.actionSummary)
@@ -239,9 +243,9 @@ struct EmailRoutingView: View {
 
     private func statusLabel(_ status: String) -> String {
         switch status {
-        case "ready":         String(localized: "已就绪")
-        case "unconfigured":  String(localized: "未配置")
-        case "misconfigured": String(localized: "配置有误")
+        case "ready":         AppLocalization.string(localized: "已就绪")
+        case "unconfigured":  AppLocalization.string(localized: "未配置")
+        case "misconfigured": AppLocalization.string(localized: "配置有误")
         default:              status
         }
     }
@@ -250,6 +254,7 @@ struct EmailRoutingView: View {
 // MARK: - 规则编辑（新建 / 改转发目标）
 
 private struct RuleEditorSheet: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let zoneName: String
     let rule: EmailRoutingRule?
@@ -266,6 +271,8 @@ private struct RuleEditorSheet: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
@@ -290,7 +297,7 @@ private struct RuleEditorSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background { SkyBackground() }
-            .navigationTitle(rule == nil ? String(localized: "新建转发规则") : String(localized: "编辑规则"))
+            .navigationTitle(rule == nil ? AppLocalization.string(localized: "新建转发规则") : AppLocalization.string(localized: "编辑规则"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -326,6 +333,7 @@ private struct RuleEditorSheet: View {
 // MARK: - 新增目的地址
 
 private struct AddAddressSheet: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let onSave: (_ email: String) async -> Void
 
@@ -336,6 +344,8 @@ private struct AddAddressSheet: View {
     private var isValid: Bool { email.contains("@") && email.contains(".") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
@@ -349,7 +359,7 @@ private struct AddAddressSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background { SkyBackground() }
-            .navigationTitle("新增目的地址")
+            .ocNavigationTitle("新增目的地址")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

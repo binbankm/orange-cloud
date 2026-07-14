@@ -2,7 +2,7 @@
   "sourceLanguage" : "zh-Hans",
   "strings" : {
     "%@" : {
-
+      "shouldTranslate" : false
     },
     "%@ 请求" : {
       "localizations" : {

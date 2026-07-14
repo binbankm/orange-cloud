@@ -56,6 +56,7 @@ nonisolated private func resolveService(_ id: String, accountId: String?) -> Wid
     WidgetDataStore.loadUsage(accountId: accountId)?.services.first { $0.id == id }
 }
 
+@available(iOSApplicationExtension 17.0, *)
 nonisolated struct UsageWidgetProvider: AppIntentTimelineProvider {
 
     func placeholder(in context: Context) -> UsageWidgetEntry {
@@ -95,19 +96,57 @@ nonisolated struct UsageWidgetProvider: AppIntentTimelineProvider {
     }
 }
 
+// iOS 16 的 WidgetKit 没有 AppIntentConfiguration；仍提供同一张用量卡，
+// 默认展示当前账号的 Workers 用量。
+nonisolated private struct UsageWidgetFallbackProvider: TimelineProvider {
+    func placeholder(in context: Context) -> UsageWidgetEntry {
+        UsageWidgetEntry(date: .now, service: sampleService(for: "workers"), missingName: nil)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (UsageWidgetEntry) -> Void) {
+        let accountId = WidgetSnapshot.currentAccountId()
+        let service = resolveService("workers", accountId: accountId) ?? sampleService(for: "workers")
+        completion(UsageWidgetEntry(date: .now, service: service, missingName: nil))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<UsageWidgetEntry>) -> Void) {
+        let accountId = WidgetSnapshot.currentAccountId()
+        let service = resolveService("workers", accountId: accountId)
+        let unavailable = service == nil && !WidgetDataStore.loadAccountAnalyticsAvailable()
+        let entry = UsageWidgetEntry(
+            date: .now,
+            service: service,
+            missingName: service == nil ? "Workers" : nil,
+            unavailable: unavailable
+        )
+        let next = Calendar.current.date(byAdding: .minute, value: 30, to: .now) ?? .now
+        completion(Timeline(entries: [entry], policy: .after(next)))
+    }
+}
+
 // MARK: - Widget
 
 struct UsageWidget: Widget {
 
     var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "UsageWidget", provider: UsageWidgetFallbackProvider()) { entry in
+            UsageWidgetView(entry: entry).daybreakContainer(date: entry.date)
+        }
+        .configurationDisplayName("账号用量")
+        .description("当前账号的 Workers 用量")
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryInline, .accessoryCircular, .accessoryRectangular])
+    }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct UsageConfigurableWidget: Widget {
+    var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "UsageWidget", intent: UsageConfigIntent.self, provider: UsageWidgetProvider()) { entry in
-            UsageWidgetView(entry: entry)
-                .daybreakContainer(date: entry.date)
+            UsageWidgetView(entry: entry).daybreakContainer(date: entry.date)
         }
         .configurationDisplayName("账号用量")
         .description("Workers / R2 / D1 / KV 的额度使用情况，可按服务选择")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryInline, .accessoryCircular, .accessoryRectangular])
-        .contentMarginsDisabled()
     }
 }
 

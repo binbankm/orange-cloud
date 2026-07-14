@@ -6,18 +6,17 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class RateLimitViewModel {
+final class RateLimitViewModel: ObservableObject {
 
-    private(set) var rules: [RateLimitRule] = []
-    private(set) var rulesetId: String?
-    private(set) var loaded = false
-    var isLoading = false
-    var isMutating = false
-    var error: String?
+    @Published private(set) var rules: [RateLimitRule] = []
+    @Published private(set) var rulesetId: String?
+    @Published private(set) var loaded = false
+    @Published var isLoading = false
+    @Published var isMutating = false
+    @Published var error: String?
 
     private let service: RateLimitService
     private let zoneId: String

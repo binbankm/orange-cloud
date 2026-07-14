@@ -11,8 +11,9 @@ import MessageUI
 import UIKit
 
 struct FeedbackView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
     @Environment(\.dismiss) private var dismiss
 
     @State private var text = ""
@@ -25,6 +26,8 @@ struct FeedbackView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
@@ -54,7 +57,7 @@ struct FeedbackView: View {
                     Text("日志只含 App 运行记录（请求路径、状态码、错误、登录态变化等），不含你的 Cloudflare 令牌、密钥值或账号密码。")
                 }
             }
-            .navigationTitle("发送反馈")
+            .ocNavigationTitle("发送反馈")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -85,7 +88,7 @@ struct FeedbackView: View {
         if MFMailComposeViewController.canSendMail() {
             mailData = MailData(
                 recipients: [DiagnosticsInfo.supportEmail],
-                subject: String(localized: "Orange Cloud 反馈"),
+                subject: AppLocalization.string(localized: "Orange Cloud 反馈"),
                 body: body,
                 attachmentURL: logURL
             )

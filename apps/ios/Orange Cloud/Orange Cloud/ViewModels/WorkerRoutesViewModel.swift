@@ -7,21 +7,20 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class WorkerRoutesViewModel {
+final class WorkerRoutesViewModel: ObservableObject {
 
-    private(set) var subdomain:     WorkerSubdomain?
-    private(set) var customDomains: [WorkerCustomDomain] = []
-    private(set) var routes:        [ScopedWorkerRoute] = []
-    private(set) var zones:         [Zone] = []
-    private(set) var loaded = false
-    var isLoading = false
-    var isSaving  = false
-    var togglingSubdomain = false
-    var error: String?
+    @Published private(set) var subdomain: WorkerSubdomain?
+    @Published private(set) var customDomains: [WorkerCustomDomain] = []
+    @Published private(set) var routes: [ScopedWorkerRoute] = []
+    @Published private(set) var zones: [Zone] = []
+    @Published private(set) var loaded = false
+    @Published var isLoading = false
+    @Published var isSaving = false
+    @Published var togglingSubdomain = false
+    @Published var error: String?
 
     private let service:     WorkerService
     private let zoneService: ZoneService

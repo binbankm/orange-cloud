@@ -1,0 +1,3 @@
+"打开 ${applicationName}" = "Open ${applicationName}";
+"查询 ${applicationName} 域名状态" = "Check ${applicationName} domain status";
+"用 ${applicationName} 查域名" = "Check domains with ${applicationName}";

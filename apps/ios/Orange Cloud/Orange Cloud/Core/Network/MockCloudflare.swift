@@ -44,7 +44,7 @@ nonisolated enum MockCloudflare {
 }
 
 /// 拦截发往 api.cloudflare.com 的请求，按路径返回 canned JSON
-nonisolated final class MockCFURLProtocol: URLProtocol {
+nonisolated final class MockCFURLProtocol: URLProtocol, @unchecked Sendable {
 
     override static func canInit(with request: URLRequest) -> Bool {
         request.url?.host == "api.cloudflare.com"
@@ -69,10 +69,11 @@ nonisolated final class MockCFURLProtocol: URLProtocol {
         // 操作窗口（复现 selectedAccount 翻转时用户已切到其它 tab 的时序）。
         let delayMs = ProcessInfo.processInfo.environment["ORANGE_MOCK_ACCOUNTS_DELAY_MS"].flatMap(Int.init) ?? 0
         let delay: TimeInterval = (path == "/client/v4/accounts" && delayMs > 0) ? Double(delayMs) / 1000 : 0
-        let deliver = { [client] in
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: data)
-            client?.urlProtocolDidFinishLoading(self)
+        let deliver: @Sendable () -> Void = { [weak self] in
+            guard let self else { return }
+            self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            self.client?.urlProtocol(self, didLoad: data)
+            self.client?.urlProtocolDidFinishLoading(self)
         }
         if delay > 0 {
             DispatchQueue.global().asyncAfter(deadline: .now() + delay, execute: deliver)
@@ -138,7 +139,7 @@ nonisolated final class MockCFURLProtocol: URLProtocol {
         [
             "http_request_dynamic_redirect": [[
                 "id": "rr1",
-                "description": "旧博客跳新站",
+                "description": AppLocalization.string(localized: "旧博客跳新站"),
                 "expression": "(http.request.uri.path contains \"/blog/\")",
                 "enabled": true,
                 "action": "redirect",
@@ -146,7 +147,7 @@ nonisolated final class MockCFURLProtocol: URLProtocol {
             ]],
             "http_response_compression": [[
                 "id": "cr1",
-                "description": "静态资源优先 zstd",
+                "description": AppLocalization.string(localized: "静态资源优先 zstd"),
                 "expression": "(http.request.uri.path contains \"/static/\")",
                 "enabled": true,
                 "action": "compress_response",

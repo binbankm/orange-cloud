@@ -7,19 +7,18 @@
 //
 
 import Foundation
+import Combine
 import AppIntents
-import Observation
 
 // MARK: - 路由（Intent → 主界面 Tab）
 
-@Observable
 @MainActor
-final class AppRouter {
+final class AppRouter: ObservableObject {
     static let shared = AppRouter()
-    var pendingModule: AppModule?
+    @Published var pendingModule: AppModule?
     /// 置 true 时在根层以全屏 cover 弹出「免登录工具箱」。
     /// 入口统一：登录页次级按钮 / 设置入口 / 通知点按都设此标志，挂在 auth 闸门之上。
-    var presentToolbox = false
+    @Published var presentToolbox = false
 
     private init() {}
 }
@@ -53,8 +52,10 @@ struct CheckZoneStatusIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let statusText = zone.status == "active" ? String(localized: "正常运行") : zone.status
-        return .result(dialog: "\(zone.name) 当前\(statusText)，套餐 \(zone.planName)。")
+        let statusText = zone.status == "active" ? AppLocalization.string(localized: "正常运行") : zone.status
+        let name = zone.name
+        let plan = zone.planName
+        return .result(dialog: IntentDialog(stringLiteral: AppLocalization.string(localized: "\(name) 当前\(statusText)，套餐 \(plan)。")))
     }
 }
 
@@ -81,7 +82,12 @@ struct OpenModuleIntent: AppIntent {
 }
 
 // MARK: - Siri 短语注册
+//
+// AppShortcutsProvider / AppShortcut 从 iOS 16.4 才有，部署目标 16.0 下需要
+// 用 @available 隔离；iOS 16.0-16.3 上无 Siri 建议的预置短语（Intent 本身仍可
+// 由用户从快捷指令 App 手动运行，perform() 不受影响）。
 
+@available(iOS 16.4, *)
 nonisolated struct OrangeCloudShortcuts: AppShortcutsProvider {
 
     static var appShortcuts: [AppShortcut] {

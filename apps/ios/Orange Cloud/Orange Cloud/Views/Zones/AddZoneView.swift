@@ -9,18 +9,17 @@
 //
 
 import SwiftUI
-import SwiftData
 import UIKit
 
 struct AddZoneView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let accountId:   String
     let accountName: String
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
 
-    @State private var viewModel: AddZoneViewModel
+    @StateObject private var viewModel: AddZoneViewModel
     @State private var domain = ""
     @FocusState private var fieldFocused: Bool
 
@@ -30,7 +29,7 @@ struct AddZoneView: View {
     init(accountId: String, accountName: String, zoneService: ZoneService) {
         self.accountId = accountId
         self.accountName = accountName
-        _viewModel = State(initialValue: AddZoneViewModel(zoneService: zoneService))
+        _viewModel = StateObject(wrappedValue: AddZoneViewModel(zoneService: zoneService))
     }
 
     // MARK: - 域名规范化与校验
@@ -56,6 +55,8 @@ struct AddZoneView: View {
     private var canSubmit: Bool { isValidDomain && !viewModel.isSaving }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Group {
                 if let zone = viewModel.createdZone {
@@ -65,8 +66,8 @@ struct AddZoneView: View {
                 }
             }
             .navigationTitle(viewModel.createdZone == nil
-                             ? String(localized: "添加域名")
-                             : String(localized: "已添加"))
+                             ? AppLocalization.string(localized: "添加域名")
+                             : AppLocalization.string(localized: "已添加"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if viewModel.createdZone == nil {
@@ -142,13 +143,14 @@ struct AddZoneView: View {
 
     private func submit() async {
         fieldFocused = false
-        await viewModel.create(name: normalizedDomain, accountId: accountId, context: modelContext)
+        await viewModel.create(name: normalizedDomain, accountId: accountId)
     }
 }
 
 // MARK: - 结果页：名称服务器 + 后续步骤
 
 private struct AddZoneResultView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let zone: Zone
     let onDone: () -> Void
@@ -159,21 +161,23 @@ private struct AddZoneResultView: View {
 
     private var steps: [String] {
         [
-            String(localized: "登录你购买该域名的注册商（Registrar）。"),
-            String(localized: "找到「名称服务器（Nameservers）」设置。"),
-            String(localized: "删除原有名称服务器，替换为上方两个 Cloudflare 地址。"),
-            String(localized: "保存更改。激活通常需几分钟到几小时，最长可达 24 小时。"),
+            AppLocalization.string(localized: "登录你购买该域名的注册商（Registrar）。"),
+            AppLocalization.string(localized: "找到「名称服务器（Nameservers）」设置。"),
+            AppLocalization.string(localized: "删除原有名称服务器，替换为上方两个 Cloudflare 地址。"),
+            AppLocalization.string(localized: "保存更改。激活通常需几分钟到几小时，最长可达 24 小时。"),
         ]
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 header
 
                 if nameServers.isEmpty {
                     // full setup 通常会即时返回 NS；万一缺失，引导去 Dashboard 查看
-                    sectionCard(String(localized: "名称服务器")) {
+                    sectionCard(AppLocalization.string(localized: "名称服务器")) {
                         Text("Cloudflare 尚未返回名称服务器，请稍后在域名详情或 Cloudflare Dashboard 查看。")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -227,7 +231,7 @@ private struct AddZoneResultView: View {
     }
 
     private var nameServerCard: some View {
-        sectionCard(String(localized: "名称服务器")) {
+        sectionCard(AppLocalization.string(localized: "名称服务器")) {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(nameServers, id: \.self) { server in
                     Text(server)
@@ -239,19 +243,18 @@ private struct AddZoneResultView: View {
                     UIPasteboard.general.string = nameServers.joined(separator: "\n")
                     copied = true
                 } label: {
-                    Label(copied ? String(localized: "已复制") : String(localized: "复制名称服务器"),
+                    Label(copied ? AppLocalization.string(localized: "已复制") : AppLocalization.string(localized: "复制名称服务器"),
                           systemImage: copied ? "checkmark" : "doc.on.doc")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(Color.ocOrangeText)
                 }
-                .contentTransition(.symbolEffect(.replace))
             }
         }
-        .sensoryFeedback(.success, trigger: copied)
+        .ocSensoryFeedback(.success, trigger: copied)
     }
 
     private var stepsCard: some View {
-        sectionCard(String(localized: "接下来")) {
+        sectionCard(AppLocalization.string(localized: "接下来")) {
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
                     HStack(alignment: .top, spacing: 12) {

@@ -12,7 +12,7 @@ import SwiftUI
 struct KVNamespaceDeleteConfirmView: View {
 
     let namespace: KVNamespace
-    let viewModel: KVNamespaceListViewModel
+    @ObservedObject var viewModel: KVNamespaceListViewModel
     let accountId: String
 
     @Environment(\.dismiss) private var dismiss
@@ -87,7 +87,7 @@ struct KVNamespaceDeleteConfirmView: View {
                     .disabled(!canDelete)
                 }
             }
-            .navigationTitle("删除命名空间")
+            .ocNavigationTitle("删除命名空间")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

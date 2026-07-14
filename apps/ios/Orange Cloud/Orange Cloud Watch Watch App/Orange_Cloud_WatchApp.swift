@@ -10,12 +10,12 @@ import SwiftUI
 @main
 struct Orange_Cloud_Watch_Watch_AppApp: App {
 
-    @State private var bridge = WatchBridge()
+    @StateObject private var bridge = WatchBridge()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(bridge)
+                .environmentObject(bridge)
                 .tint(Color.ocOrange)
                 .task { bridge.activate() }
         }

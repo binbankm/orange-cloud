@@ -11,10 +11,11 @@ import SwiftUI
 import Charts
 
 struct ZoneAnalyticsSection: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     /// 宿主页持有（@State）并传入，宿主的下拉刷新与本区共用同一实例
-    let viewModel: ZoneAnalyticsViewModel
-    @Environment(EntitlementStore.self) private var entitlements
+    @ObservedObject var viewModel: ZoneAnalyticsViewModel
+    @EnvironmentObject private var entitlements: EntitlementStore
     @State private var selectedDate: Date?
     @State private var rangePaywallPresented = false
     @State private var summaryPaywallPresented = false
@@ -22,6 +23,8 @@ struct ZoneAnalyticsSection: View {
     @ScaledMetric(relativeTo: .largeTitle) private var heroNumberSize: CGFloat = 40
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         VStack(spacing: 14) {
             rangePicker
 
@@ -34,7 +37,7 @@ struct ZoneAnalyticsSection: View {
             } else if viewModel.points.isEmpty {
                 // 失败时不再误报「暂无数据」，由上方红色提示说明
                 if viewModel.error == nil {
-                    ContentUnavailableView {
+                    OCContentUnavailableView {
                         Label("暂无数据", systemImage: "chart.xyaxis.line")
                     } description: {
                         Text("所选时间范围内没有流量数据")
@@ -62,7 +65,7 @@ struct ZoneAnalyticsSection: View {
         .sheet(isPresented: $summaryPaywallPresented) {
             PaywallView(feature: .aiInsights)
         }
-        .onChange(of: viewModel.selectedRange) {
+        .onChange(of: viewModel.selectedRange) { _ in
             selectedDate = nil
             viewModel.clearInsight()
             Task { await viewModel.load() }
@@ -126,7 +129,7 @@ struct ZoneAnalyticsSection: View {
                         } else {
                             Image(systemName: "arrow.clockwise")
                         }
-                        Text(viewModel.isSummarizing ? String(localized: "分析中…") : String(localized: "重新生成"))
+                        Text(viewModel.isSummarizing ? AppLocalization.string(localized: "分析中…") : AppLocalization.string(localized: "重新生成"))
                     }
                     .font(.caption.weight(.medium))
                 }
@@ -268,7 +271,6 @@ struct ZoneAnalyticsSection: View {
 
             Text(viewModel.totalRequests.formatted())
                 .font(.system(size: heroNumberSize, weight: .bold, design: .rounded))
-                .contentTransition(.numericText())
 
             requestsChart
                 .frame(height: 150)
@@ -325,33 +327,7 @@ struct ZoneAnalyticsSection: View {
                 .accessibilityHidden(true)
             }
 
-            // 扫览
-            if let selected = selectedPoint {
-                RuleMark(x: .value("选中", selected.date))
-                    .foregroundStyle(.secondary.opacity(0.4))
-                    .accessibilityHidden(true)
-                    .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart))) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(axisLabel(for: selected.date))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            Text(selected.requests.formatted())
-                                .font(.caption.bold())
-                                .foregroundStyle(.primary)
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        // 实色背景：material 在 annotation 渲染上下文中会发黑
-                        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .strokeBorder(Color(.separator).opacity(0.5), lineWidth: 0.5)
-                        )
-                        .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
-                    }
-            }
         }
-        .chartXSelection(value: $selectedDate)
         .chartYAxis {
             AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { value in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
@@ -425,7 +401,6 @@ struct ZoneAnalyticsSection: View {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(viewModel.cacheHitRate.map { String(format: "%.1f%%", $0) } ?? "—")
                         .font(.system(.title, design: .rounded, weight: .bold))
-                        .contentTransition(.numericText())
                     TrendBadge(delta: viewModel.cacheHitTrendPt, unit: "pt")
                 }
                 Text("边缘命中 / 全部请求")
@@ -444,14 +419,14 @@ struct ZoneAnalyticsSection: View {
     private var smallCardGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible())], spacing: 14) {
             SmallStatCard(
-                title: String(localized: "带宽"),
+                title: AppLocalization.string(localized: "带宽"),
                 value: Int64(viewModel.totalBytes).ocBytes,
                 trend: viewModel.bytesTrend,
                 sparkValues: viewModel.points.map { Double($0.bytes) },
                 sparkColor: .ocOrange
             )
             SmallStatCard(
-                title: String(localized: "拦截威胁"),
+                title: AppLocalization.string(localized: "拦截威胁"),
                 value: viewModel.totalThreats.formatted(.number.notation(.compactName)),
                 trend: viewModel.threatsTrend,
                 positiveIsGood: false,    // 威胁减少是好事
@@ -459,14 +434,14 @@ struct ZoneAnalyticsSection: View {
                 sparkColor: .red
             )
             SmallStatCard(
-                title: String(localized: "独立访客"),
+                title: AppLocalization.string(localized: "独立访客"),
                 value: viewModel.totalUniques.formatted(.number.notation(.compactName)),
                 trend: viewModel.uniquesTrend,
                 sparkValues: viewModel.points.map { Double($0.uniques) },
                 sparkColor: .blue
             )
             SmallStatCard(
-                title: String(localized: "页面浏览"),
+                title: AppLocalization.string(localized: "页面浏览"),
                 value: viewModel.totalPageViews.formatted(.number.notation(.compactName)),
                 trend: nil,
                 sparkValues: viewModel.points.map { Double($0.pageViews) },
@@ -479,12 +454,15 @@ struct ZoneAnalyticsSection: View {
 // MARK: - 趋势徽章
 
 struct TrendBadge: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let delta: Double?
     var unit: String = "%"
     var positiveIsGood: Bool = true
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         if let delta, delta.isFinite, abs(delta) >= 0.05 {
             HStack(spacing: 2) {
                 Image(systemName: delta >= 0 ? "arrow.up" : "arrow.down")
@@ -504,11 +482,14 @@ struct TrendBadge: View {
 // MARK: - 环形仪表
 
 struct RingGauge: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let percent: Double    // 0–100
     var size: CGFloat = 76
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         ZStack {
             Circle()
                 .stroke(Color.ocOrange.opacity(0.15), lineWidth: 10)
@@ -520,13 +501,14 @@ struct RingGauge: View {
                 .font(.system(.headline, design: .rounded, weight: .bold))
         }
         .frame(width: size, height: size)
-        .animation(.smooth, value: percent)
+        .animation(.ocSmooth, value: percent)
     }
 }
 
 // MARK: - 小指标卡（迷你走势）
 
 struct SmallStatCard: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let title: String
     let value: String
@@ -536,13 +518,14 @@ struct SmallStatCard: View {
     let sparkColor: Color
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             Text(value)
                 .font(.system(.title2, design: .rounded, weight: .bold))
-                .contentTransition(.numericText())
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             HStack(alignment: .bottom) {
@@ -562,11 +545,14 @@ struct SmallStatCard: View {
 // MARK: - 迷你走势线
 
 struct Sparkline: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let values: [Double]
     let color: Color
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         if values.count > 1, values.contains(where: { $0 > 0 }) {
             Chart(Array(values.enumerated()), id: \.offset) { index, value in
                 LineMark(
@@ -606,7 +592,7 @@ struct Sparkline: View {
     }
     return ScrollView {
         VStack(spacing: 14) {
-            SmallStatCard(title: String(localized: "带宽"), value: "184.2 GB", trend: 8.1,
+            SmallStatCard(title: AppLocalization.string(localized: "带宽"), value: "184.2 GB", trend: 8.1,
                           sparkValues: mock.map { Double($0.bytes) }, sparkColor: .ocOrange)
             RingGauge(percent: 94.2)
         }

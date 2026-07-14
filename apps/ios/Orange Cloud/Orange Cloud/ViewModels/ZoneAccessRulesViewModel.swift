@@ -6,17 +6,16 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class ZoneAccessRulesViewModel {
+final class ZoneAccessRulesViewModel: ObservableObject {
 
-    private(set) var rules: [FirewallAccessRule] = []
-    private(set) var isLoading = false
-    private(set) var loaded = false
-    var isSaving = false
-    var error: String?
+    @Published private(set) var rules: [FirewallAccessRule] = []
+    @Published private(set) var isLoading = false
+    @Published private(set) var loaded = false
+    @Published var isSaving = false
+    @Published var error: String?
 
     private let service: FirewallAccessRuleService
     private let zoneId: String

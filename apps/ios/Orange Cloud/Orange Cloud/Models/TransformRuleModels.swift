@@ -35,12 +35,12 @@ nonisolated struct TransformRule: Codable, Identifiable, Sendable {
         guard let p = actionParameters else { return nil }
         if phase == .requestURL {
             var parts: [String] = []
-            if let v = p.uri?.path?.value { parts.append(String(localized: "路径 → \(v)")) }
-            if let v = p.uri?.query?.value { parts.append(String(localized: "查询串 → \(v)")) }
+            if let v = p.uri?.path?.value { parts.append(AppLocalization.string(localized: "路径 → \(v)")) }
+            if let v = p.uri?.query?.value { parts.append(AppLocalization.string(localized: "查询串 → \(v)")) }
             return parts.isEmpty ? nil : parts.joined(separator: "  ·  ")
         } else if let headers = p.headers, !headers.isEmpty {
             let names = headers.keys.sorted().joined(separator: ", ")
-            return String(localized: "头：\(names)")
+            return AppLocalization.string(localized: "头：\(names)")
         }
         return nil
     }
@@ -104,9 +104,9 @@ nonisolated enum TransformPhase: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .requestURL:   String(localized: "URL 重写")
-        case .requestHead:  String(localized: "请求头修改")
-        case .responseHead: String(localized: "响应头修改")
+        case .requestURL:   AppLocalization.string(localized: "URL 重写")
+        case .requestHead:  AppLocalization.string(localized: "请求头修改")
+        case .responseHead: AppLocalization.string(localized: "响应头修改")
         }
     }
 
@@ -122,9 +122,9 @@ nonisolated enum HeaderOperation: String, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .set:    String(localized: "设置")
-        case .add:    String(localized: "追加")
-        case .remove: String(localized: "删除")
+        case .set:    AppLocalization.string(localized: "设置")
+        case .add:    AppLocalization.string(localized: "追加")
+        case .remove: AppLocalization.string(localized: "删除")
         }
     }
 }

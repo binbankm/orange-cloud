@@ -9,12 +9,15 @@ import SwiftUI
 import UIKit
 
 struct PushCenterView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @State private var vm = PushCenterViewModel()
+    @StateObject private var vm = PushCenterViewModel()
     @State private var copied = false
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         ScrollView {
             VStack(spacing: OCLayout.islandGap) {
                 statusIsland
@@ -30,7 +33,7 @@ struct PushCenterView: View {
             .padding(OCLayout.pagePadding)
         }
         .background { SkyBackground() }
-        .navigationTitle("推送中心")
+        .ocNavigationTitle("推送中心")
         .navigationBarTitleDisplayMode(.inline)
         .task { vm.refresh() }
         .refreshable { vm.refresh() }
@@ -253,7 +256,7 @@ struct PushCenterView: View {
                 ToolNotice(
                     systemImage: "tray",
                     title: "暂无消息",
-                    message: String(localized: "收到的推送会出现在这里，包括 App 在后台时到达的。")
+                    message: AppLocalization.string(localized: "收到的推送会出现在这里，包括 App 在后台时到达的。")
                 )
             } else {
                 VStack(spacing: 0) {

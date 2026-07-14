@@ -7,11 +7,11 @@
 //
 
 import Foundation
+import Combine
 import StoreKit
 
-@Observable
 @MainActor
-final class EntitlementStore {
+final class EntitlementStore: ObservableObject {
 
     static let shared = EntitlementStore()
 
@@ -24,14 +24,14 @@ final class EntitlementStore {
     }
 
     /// StoreKit 验证出的解锁状态（订阅有效或持有买断）
-    private var entitled = false
-    private(set) var hasLifetime = false
+    @Published private var entitled = false
+    @Published private(set) var hasLifetime = false
     /// 按 ProductID.all 顺序排列，付费墙直接展示
-    private(set) var products: [Product] = []
-    private(set) var isLoadingProducts = false
+    @Published private(set) var products: [Product] = []
+    @Published private(set) var isLoadingProducts = false
     /// 恢复购买进行中（防并发 AppStore.sync 互相取消；付费墙据此禁用按钮）
-    private(set) var isRestoring = false
-    var purchaseError: String?
+    @Published private(set) var isRestoring = false
+    @Published var purchaseError: String?
 
     private var updatesTask: Task<Void, Never>?
 
@@ -70,13 +70,13 @@ final class EntitlementStore {
             if products.isEmpty {
                 // 不抛错但结果为空：StoreKit 配置文件解析失败或商品 ID 不匹配
                 AppLog.purchase.error("Product.products(for:) 返回空结果，请求的 ID：\(ProductID.all.joined(separator: ", "))")
-                purchaseError = String(localized: "无法加载商品信息，请稍后再试。")
+                purchaseError = AppLocalization.string(localized: "无法加载商品信息，请稍后再试。")
             } else {
                 AppLog.purchase.info("已加载 \(self.products.count) 个商品")
             }
         } catch {
             AppLog.purchase.error("Product.products(for:) 失败：\(String(describing: error))")
-            purchaseError = String(localized: "无法加载商品信息，请稍后再试。")
+            purchaseError = AppLocalization.string(localized: "无法加载商品信息，请稍后再试。")
         }
         #endif
     }
@@ -91,7 +91,7 @@ final class EntitlementStore {
                 AppLog.purchase.notice("purchase verified: \(transaction.productID)")
             } else {
                 AppLog.purchase.error("purchase result unverified")
-                purchaseError = String(localized: "购买凭证校验失败，请尝试恢复购买。")
+                purchaseError = AppLocalization.string(localized: "购买凭证校验失败，请尝试恢复购买。")
             }
         case .userCancelled, .pending:
             AppLog.purchase.info("purchase userCancelled/pending")

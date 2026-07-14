@@ -51,15 +51,15 @@ nonisolated struct AccessApp: Codable, Identifiable, Sendable {
     /// 应用类型可读名
     var typeLabel: String {
         switch type ?? "" {
-        case "self_hosted":  String(localized: "自托管")
+        case "self_hosted":  AppLocalization.string(localized: "自托管")
         case "saas":         "SaaS"
         case "ssh":          "SSH"
         case "vnc":          "VNC"
-        case "app_launcher": String(localized: "应用启动台")
+        case "app_launcher": AppLocalization.string(localized: "应用启动台")
         case "warp":         "WARP"
-        case "bookmark":     String(localized: "书签")
+        case "bookmark":     AppLocalization.string(localized: "书签")
         case "dash_sso":     "Dash SSO"
-        case "":             String(localized: "应用")
+        case "":             AppLocalization.string(localized: "应用")
         case let other:      other
         }
     }
@@ -144,11 +144,11 @@ nonisolated enum AccessRuleKind: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
     var label: String {
         switch self {
-        case .everyone:     String(localized: "所有人")
-        case .email:        String(localized: "邮箱")
-        case .email_domain: String(localized: "邮箱域名")
-        case .ip:           String(localized: "IP 范围")
-        case .geo:          String(localized: "国家/地区")
+        case .everyone:     AppLocalization.string(localized: "所有人")
+        case .email:        AppLocalization.string(localized: "邮箱")
+        case .email_domain: AppLocalization.string(localized: "邮箱域名")
+        case .ip:           AppLocalization.string(localized: "IP 范围")
+        case .geo:          AppLocalization.string(localized: "国家/地区")
         }
     }
     var placeholder: String {
@@ -168,9 +168,9 @@ nonisolated enum AccessDecision: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
     var label: String {
         switch self {
-        case .allow:  String(localized: "允许")
-        case .deny:   String(localized: "拒绝")
-        case .bypass: String(localized: "绕过")
+        case .allow:  AppLocalization.string(localized: "允许")
+        case .deny:   AppLocalization.string(localized: "拒绝")
+        case .bypass: AppLocalization.string(localized: "绕过")
         }
     }
 }
@@ -210,12 +210,12 @@ nonisolated enum AccessSessionDuration: String, CaseIterable, Identifiable, Send
     var id: String { rawValue }
     var label: String {
         switch self {
-        case .m30:   String(localized: "30 分钟")
-        case .h1:    String(localized: "1 小时")
-        case .h6:    String(localized: "6 小时")
-        case .h24:   String(localized: "24 小时")
-        case .week:  String(localized: "1 周")
-        case .month: String(localized: "1 个月")
+        case .m30:   AppLocalization.string(localized: "30 分钟")
+        case .h1:    AppLocalization.string(localized: "1 小时")
+        case .h6:    AppLocalization.string(localized: "6 小时")
+        case .h24:   AppLocalization.string(localized: "24 小时")
+        case .week:  AppLocalization.string(localized: "1 周")
+        case .month: AppLocalization.string(localized: "1 个月")
         }
     }
 }
@@ -253,9 +253,9 @@ nonisolated struct GatewayRule: Codable, Identifiable, Sendable {
         switch f {
         case "dns":            return "DNS"
         case "http":           return "HTTP"
-        case "l4":             return String(localized: "网络")
-        case "egress":         return String(localized: "出口")
-        case "resolver":       return String(localized: "解析器")
+        case "l4":             return AppLocalization.string(localized: "网络")
+        case "egress":         return AppLocalization.string(localized: "出口")
+        case "resolver":       return AppLocalization.string(localized: "解析器")
         default:               return f.uppercased()
         }
     }
@@ -263,15 +263,15 @@ nonisolated struct GatewayRule: Codable, Identifiable, Sendable {
     /// 动作可读名（常见值，其余原样）
     var actionLabel: String {
         switch action {
-        case "allow":           String(localized: "允许")
-        case "block":           String(localized: "阻止")
-        case "isolate":         String(localized: "隔离")
-        case "override":        String(localized: "覆盖")
-        case "safesearch":      String(localized: "安全搜索")
-        case "off":             String(localized: "关闭")
-        case "on":              String(localized: "开启")
-        case "do_not_inspect":  String(localized: "不检查")
-        case "noscan":          String(localized: "不扫描")
+        case "allow":           AppLocalization.string(localized: "允许")
+        case "block":           AppLocalization.string(localized: "阻止")
+        case "isolate":         AppLocalization.string(localized: "隔离")
+        case "override":        AppLocalization.string(localized: "覆盖")
+        case "safesearch":      AppLocalization.string(localized: "安全搜索")
+        case "off":             AppLocalization.string(localized: "关闭")
+        case "on":              AppLocalization.string(localized: "开启")
+        case "do_not_inspect":  AppLocalization.string(localized: "不检查")
+        case "noscan":          AppLocalization.string(localized: "不扫描")
         case let other?:        other
         case nil:               "—"
         }
@@ -336,7 +336,7 @@ nonisolated enum GatewayFilterType: String, CaseIterable, Identifiable, Sendable
         switch self {
         case .dns:  "DNS"
         case .http: "HTTP"
-        case .l4:   String(localized: "网络")
+        case .l4:   AppLocalization.string(localized: "网络")
         }
     }
 
@@ -344,19 +344,19 @@ nonisolated enum GatewayFilterType: String, CaseIterable, Identifiable, Sendable
     var actions: [(value: String, label: String)] {
         switch self {
         case .dns:
-            [("allow", String(localized: "允许")),
-             ("block", String(localized: "阻止")),
-             ("safesearch", String(localized: "安全搜索")),
-             ("ytrestricted", String(localized: "YouTube 受限"))]
+            [("allow", AppLocalization.string(localized: "允许")),
+             ("block", AppLocalization.string(localized: "阻止")),
+             ("safesearch", AppLocalization.string(localized: "安全搜索")),
+             ("ytrestricted", AppLocalization.string(localized: "YouTube 受限"))]
         case .http:
-            [("allow", String(localized: "允许")),
-             ("block", String(localized: "阻止")),
-             ("isolate", String(localized: "隔离")),
-             ("off", String(localized: "不检查")),
-             ("noscan", String(localized: "不扫描"))]
+            [("allow", AppLocalization.string(localized: "允许")),
+             ("block", AppLocalization.string(localized: "阻止")),
+             ("isolate", AppLocalization.string(localized: "隔离")),
+             ("off", AppLocalization.string(localized: "不检查")),
+             ("noscan", AppLocalization.string(localized: "不扫描"))]
         case .l4:
-            [("allow", String(localized: "允许")),
-             ("block", String(localized: "阻止"))]
+            [("allow", AppLocalization.string(localized: "允许")),
+             ("block", AppLocalization.string(localized: "阻止"))]
         }
     }
 
@@ -374,32 +374,32 @@ nonisolated enum GatewayExpressionCatalog {
     static func selectors(for type: GatewayFilterType) -> [GatewaySelector] {
         switch type {
         case .dns:
-            [GatewaySelector(label: String(localized: "域名"),     snippet: "any(dns.domains[*] == \"example.com\")"),
-             GatewaySelector(label: String(localized: "主机"),     snippet: "dns.fqdn == \"example.com\""),
-             GatewaySelector(label: String(localized: "内容分类"), snippet: "any(dns.content_category[*] in {1})"),
-             GatewaySelector(label: String(localized: "安全分类"), snippet: "any(dns.security_category[*] in {1})"),
-             GatewaySelector(label: String(localized: "记录类型"), snippet: "dns.query_rtype == \"AAAA\""),
-             GatewaySelector(label: String(localized: "源 IP"),    snippet: "dns.src_ip == \"1.1.1.1\""),
-             GatewaySelector(label: String(localized: "用户邮箱"), snippet: "identity.email == \"user@example.com\"")]
+            [GatewaySelector(label: AppLocalization.string(localized: "域名"),     snippet: "any(dns.domains[*] == \"example.com\")"),
+             GatewaySelector(label: AppLocalization.string(localized: "主机"),     snippet: "dns.fqdn == \"example.com\""),
+             GatewaySelector(label: AppLocalization.string(localized: "内容分类"), snippet: "any(dns.content_category[*] in {1})"),
+             GatewaySelector(label: AppLocalization.string(localized: "安全分类"), snippet: "any(dns.security_category[*] in {1})"),
+             GatewaySelector(label: AppLocalization.string(localized: "记录类型"), snippet: "dns.query_rtype == \"AAAA\""),
+             GatewaySelector(label: AppLocalization.string(localized: "源 IP"),    snippet: "dns.src_ip == \"1.1.1.1\""),
+             GatewaySelector(label: AppLocalization.string(localized: "用户邮箱"), snippet: "identity.email == \"user@example.com\"")]
         case .http:
-            [GatewaySelector(label: String(localized: "域名"),     snippet: "any(http.request.domains[*] == \"example.com\")"),
-             GatewaySelector(label: String(localized: "主机"),     snippet: "http.request.host == \"example.com\""),
-             GatewaySelector(label: String(localized: "URI 路径"), snippet: "http.request.uri.path == \"/path\""),
-             GatewaySelector(label: String(localized: "请求方法"), snippet: "http.request.method == \"POST\""),
-             GatewaySelector(label: String(localized: "内容分类"), snippet: "any(http.request.uri.content_category[*] in {1})"),
-             GatewaySelector(label: String(localized: "安全分类"), snippet: "any(http.request.uri.security_category[*] in {1})"),
-             GatewaySelector(label: String(localized: "应用"),     snippet: "any(app.ids[*] in {1})"),
-             GatewaySelector(label: String(localized: "用户邮箱"), snippet: "identity.email == \"user@example.com\"")]
+            [GatewaySelector(label: AppLocalization.string(localized: "域名"),     snippet: "any(http.request.domains[*] == \"example.com\")"),
+             GatewaySelector(label: AppLocalization.string(localized: "主机"),     snippet: "http.request.host == \"example.com\""),
+             GatewaySelector(label: AppLocalization.string(localized: "URI 路径"), snippet: "http.request.uri.path == \"/path\""),
+             GatewaySelector(label: AppLocalization.string(localized: "请求方法"), snippet: "http.request.method == \"POST\""),
+             GatewaySelector(label: AppLocalization.string(localized: "内容分类"), snippet: "any(http.request.uri.content_category[*] in {1})"),
+             GatewaySelector(label: AppLocalization.string(localized: "安全分类"), snippet: "any(http.request.uri.security_category[*] in {1})"),
+             GatewaySelector(label: AppLocalization.string(localized: "应用"),     snippet: "any(app.ids[*] in {1})"),
+             GatewaySelector(label: AppLocalization.string(localized: "用户邮箱"), snippet: "identity.email == \"user@example.com\"")]
         case .l4:
-            [GatewaySelector(label: String(localized: "目标 IP"),   snippet: "net.dst.ip == \"1.2.3.4\""),
-             GatewaySelector(label: String(localized: "目标端口"),  snippet: "net.dst.port == 443"),
-             GatewaySelector(label: String(localized: "协议"),      snippet: "net.protocol == \"tcp\""),
+            [GatewaySelector(label: AppLocalization.string(localized: "目标 IP"),   snippet: "net.dst.ip == \"1.2.3.4\""),
+             GatewaySelector(label: AppLocalization.string(localized: "目标端口"),  snippet: "net.dst.port == 443"),
+             GatewaySelector(label: AppLocalization.string(localized: "协议"),      snippet: "net.protocol == \"tcp\""),
              GatewaySelector(label: "SNI",                          snippet: "net.sni.host == \"example.com\""),
-             GatewaySelector(label: String(localized: "目标国家"),  snippet: "net.dst.geo.country == \"US\""),
-             GatewaySelector(label: String(localized: "源 IP"),     snippet: "net.src.ip == \"1.2.3.4\"")]
+             GatewaySelector(label: AppLocalization.string(localized: "目标国家"),  snippet: "net.dst.geo.country == \"US\""),
+             GatewaySelector(label: AppLocalization.string(localized: "源 IP"),     snippet: "net.src.ip == \"1.2.3.4\"")]
         }
     }
 
     /// 编辑器底部的语法提示
-    static let syntaxHint = String(localized: "用 and / or 连接多个条件；字符串加双引号；集合用 {1 2 3}；数组字段用 any(字段[*] == 值)。保存时 Cloudflare 会校验并规范化表达式。")
+    static let syntaxHint = AppLocalization.string(localized: "用 and / or 连接多个条件；字符串加双引号；集合用 {1 2 3}；数组字段用 any(字段[*] == 值)。保存时 Cloudflare 会校验并规范化表达式。")
 }

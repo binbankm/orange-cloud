@@ -8,11 +8,12 @@
 import SwiftUI
 
 struct WAFRuleListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let zoneName: String
 
-    @Environment(AuthManager.self) private var auth
-    @State private var viewModel: WAFRulesViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var viewModel: WAFRulesViewModel
     @State private var showDenied = false
     @State private var showForm = false
     @State private var editingRule: WAFRule?
@@ -22,7 +23,7 @@ struct WAFRuleListView: View {
 
     init(zoneId: String, zoneName: String, session: SessionStore) {
         self.zoneName = zoneName
-        _viewModel = State(initialValue: WAFRulesViewModel(service: session.wafService, zoneId: zoneId))
+        _viewModel = StateObject(wrappedValue: WAFRulesViewModel(service: session.wafService, zoneId: zoneId))
     }
 
     private var canWrite: Bool { auth.hasScope("zone-waf.write") }
@@ -37,16 +38,18 @@ struct WAFRuleListView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if viewModel.isLoading && !viewModel.loaded {
                 SkeletonList(rows: 6, icon: .none, trailing: true)
             } else if viewModel.rules.isEmpty {
-                ContentUnavailableView {
+                OCContentUnavailableView {
                     Label("没有自定义规则", systemImage: "shield")
                 } description: {
                     Text(canWrite
-                         ? String(localized: "点击右上角 + 创建第一条防火墙规则")
-                         : String(localized: "在 Cloudflare Dashboard → 安全性 → WAF 中创建自定义规则"))
+                         ? AppLocalization.string(localized: "点击右上角 + 创建第一条防火墙规则")
+                         : AppLocalization.string(localized: "在 Cloudflare Dashboard → 安全性 → WAF 中创建自定义规则"))
                 } actions: {
                     if canWrite {
                         Button("添加规则") { showForm = true }
@@ -56,7 +59,7 @@ struct WAFRuleListView: View {
                     }
                 }
             } else if filteredRules.isEmpty {
-                ContentUnavailableView.search(text: searchText)
+                OCContentUnavailableView.search(text: searchText)
             } else {
                 List {
                     Section {
@@ -94,8 +97,8 @@ struct WAFRuleListView: View {
                         }
                     } footer: {
                         Text(canWrite
-                             ? String(localized: "规则按从上到下的顺序执行，点按可编辑，左滑可删除。")
-                             : String(localized: "当前授权仅限读取（zone-waf.read），无法修改规则。"))
+                             ? AppLocalization.string(localized: "规则按从上到下的顺序执行，点按可编辑，左滑可删除。")
+                             : AppLocalization.string(localized: "当前授权仅限读取（zone-waf.read），无法修改规则。"))
                     }
                     .glassRow()
                 }
@@ -104,7 +107,7 @@ struct WAFRuleListView: View {
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("WAF 防火墙")
+        .ocNavigationTitle("WAF 防火墙")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "搜索规则")
         .toolbar {
@@ -134,7 +137,7 @@ struct WAFRuleListView: View {
             titleVisibility: .visible
         ) {
             if let rule = ruleToDelete {
-                Button("删除「\(rule.description ?? String(localized: "未命名规则"))」", role: .destructive) {
+                Button("删除「\(rule.description ?? AppLocalization.string(localized: "未命名规则"))」", role: .destructive) {
                     Task { await viewModel.delete(rule: rule) }
                 }
             }
@@ -165,8 +168,9 @@ struct WAFRuleListView: View {
 // MARK: - 新建 / 编辑规则表单
 
 private struct WAFRuleFormView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    let viewModel: WAFRulesViewModel
+    @ObservedObject var viewModel: WAFRulesViewModel
     /// 非 nil 为编辑模式：预填并以表达式编辑器打开（表达式反解回条件行不可靠）
     let rule: WAFRule?
 
@@ -236,6 +240,8 @@ private struct WAFRuleFormView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 if WAFAssistant.isReady {
@@ -282,7 +288,7 @@ private struct WAFRuleFormView: View {
                     }
                 }
             }
-            .navigationTitle(rule == nil ? String(localized: "新建规则") : String(localized: "编辑规则"))
+            .navigationTitle(rule == nil ? AppLocalization.string(localized: "新建规则") : AppLocalization.string(localized: "编辑规则"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -342,7 +348,7 @@ private struct WAFRuleFormView: View {
                     }
                 }
                 .padding(.vertical, 2)
-                .onChange(of: row.fieldKey) { _, newKey in
+                .onChange(of: row.fieldKey) { newKey in
                     // 换字段后若当前运算符不适用，回落到首个可用运算符
                     let ops = availableOps(for: newKey)
                     if !ops.contains(row.op) { row.op = ops.first ?? .eq }
@@ -360,7 +366,7 @@ private struct WAFRuleFormView: View {
         }
 
         Section {
-            Text(generatedExpression.isEmpty ? String(localized: "（条件尚未填完）") : generatedExpression)
+            Text(generatedExpression.isEmpty ? AppLocalization.string(localized: "（条件尚未填完）") : generatedExpression)
                 .font(.caption.monospaced())
                 .foregroundStyle(generatedExpression.isEmpty ? .tertiary : .secondary)
                 .textSelection(.enabled)
@@ -401,7 +407,7 @@ private struct WAFRuleFormView: View {
     private var aiSection: some View {
         Section {
             TextField(
-                String(localized: "例如：拦截来自中国大陆、访问 /admin 的请求"),
+                AppLocalization.string(localized: "例如：拦截来自中国大陆、访问 /admin 的请求"),
                 text: $nlPrompt,
                 axis: .vertical
             )
@@ -444,8 +450,8 @@ private struct WAFRuleFormView: View {
             Label("用自然语言描述", systemImage: "sparkles")
         } footer: {
             Text(readback == nil
-                 ? String(localized: "在设备上离线生成，描述会填入下方表达式，提交前请核对。")
-                 : String(localized: "已填入下方表达式，并暂时关闭了「启用」，确认无误后再开启保存。"))
+                 ? AppLocalization.string(localized: "在设备上离线生成，描述会填入下方表达式，提交前请核对。")
+                 : AppLocalization.string(localized: "已填入下方表达式，并暂时关闭了「启用」，确认无误后再开启保存。"))
         }
     }
 
@@ -454,7 +460,7 @@ private struct WAFRuleFormView: View {
             readback = nil
             return
         }
-        withAnimation(.smooth) {
+        withAnimation(.ocSmooth) {
             expression = result.expression
             action = result.action
             enabled = false        // AI 生成默认不启用，人在回路确认后再开
@@ -491,6 +497,7 @@ private struct WAFRuleFormView: View {
 // MARK: - 规则行
 
 private struct WAFRuleRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let rule: WAFRule
     let canWrite: Bool
@@ -513,9 +520,11 @@ private struct WAFRuleRow: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(rule.description ?? String(localized: "未命名规则"))
+                Text(rule.description ?? AppLocalization.string(localized: "未命名规则"))
                     .font(.callout.weight(.semibold))
                     .lineLimit(1)
                 Spacer()
@@ -589,7 +598,7 @@ private struct WAFRuleRow: View {
                     } else {
                         Image(systemName: "sparkles")
                     }
-                    Text(isExplaining ? String(localized: "解释中…") : String(localized: "用大白话解释"))
+                    Text(isExplaining ? AppLocalization.string(localized: "解释中…") : AppLocalization.string(localized: "用大白话解释"))
                 }
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(Color.ocOrangeText)
@@ -613,7 +622,7 @@ private struct WAFRuleRow: View {
         defer { isExplaining = false }
         do {
             let result = try await WAFAssistant.explainRule(expression: expression, action: rule.action)
-            withAnimation(.smooth) { explanation = result }
+            withAnimation(.ocSmooth) { explanation = result }
         } catch {
             explainError = error.localizedDescription
         }

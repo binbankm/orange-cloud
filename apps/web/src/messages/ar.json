@@ -30,7 +30,7 @@
 		"title1": "Cloudflare الخاص بك،",
 		"title2": "بلمحة واحدة",
 		"sub": "النطاقات وDNS والتحليلات وسجلات Workers والتخزين، ضمن سماء تتبع وقت اليوم. تسجيل دخول OAuth رسمي — دون لصق رموز API.",
-		"note": "iOS 17.0+ / Android 9+ · تنزيل مجاني، Pro اختياري"
+		"note": "iOS 16.0+ / Android 9+ · تنزيل مجاني، Pro اختياري"
 	},
 	"phone": {
 		"greetMorning": "صباح الخير يا جيامين",
@@ -156,13 +156,13 @@
 	"cta": {
 		"title": "ضع Cloudflare في جيبك",
 		"sub": "سماء الليلة بانتظارك في التطبيق.",
-		"requirement": "يتطلب iOS 17.0+ أو Android 9+ · iPhone وiPad وAndroid"
+		"requirement": "يتطلب iOS 16.0+ أو Android 9+ · iPhone وiPad وAndroid"
 	},
 	"changelog": {
 		"title": "سجل الإصدارات",
 		"sub": "Orange Cloud متاح الآن على App Store. إليك سجل الإصدارات — أو انضم إلى TestFlight للوصول المبكر إلى الإصدارات القادمة.",
 		"tfButton": "انضم إلى TestFlight",
-		"tfNote": "يتطلب iOS 17.0 أو أحدث · أجهزة Apple فقط",
+		"tfNote": "يتطلب iOS 16.0 أو أحدث · أجهزة Apple فقط",
 		"androidSoon": "تطبيق Android قادم قريبًا إلى Google Play",
 		"statusInReview": "قيد المراجعة"
 	},

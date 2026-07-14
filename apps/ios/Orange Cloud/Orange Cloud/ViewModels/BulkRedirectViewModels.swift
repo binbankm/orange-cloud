@@ -6,18 +6,17 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class RedirectListsViewModel {
+final class RedirectListsViewModel: ObservableObject {
 
-    private(set) var lists: [RedirectList] = []
-    var isLoading = false
-    var loaded = false
-    var isMutating = false
-    var error: String?
-    var didMutate = false
+    @Published private(set) var lists: [RedirectList] = []
+    @Published var isLoading = false
+    @Published var loaded = false
+    @Published var isMutating = false
+    @Published var error: String?
+    @Published var didMutate = false
 
     private let service: BulkRedirectService
     let accountId: String
@@ -78,23 +77,22 @@ final class RedirectListsViewModel {
     }
 }
 
-@Observable
 @MainActor
-final class RedirectListDetailViewModel {
+final class RedirectListDetailViewModel: ObservableObject {
 
-    var list: RedirectList
-    private(set) var items: [RedirectListItem] = []
-    var isLoadingItems = false
-    var itemsLoaded = false
-    var isMutating = false
+    @Published var list: RedirectList
+    @Published private(set) var items: [RedirectListItem] = []
+    @Published var isLoadingItems = false
+    @Published var itemsLoaded = false
+    @Published var isMutating = false
     /// 异步批量操作进行中的提示（轮询期间）
-    var statusText: String?
-    var error: String?
-    var didMutate = false
+    @Published var statusText: String?
+    @Published var error: String?
+    @Published var didMutate = false
 
     // 启用状态（http_request_redirect ruleset 中引用本列表的规则）
-    private(set) var enableLoaded = false
-    private(set) var isEnabled = false
+    @Published private(set) var enableLoaded = false
+    @Published private(set) var isEnabled = false
     private var enableRulesetId: String?
     private var enableRuleId: String?
 
@@ -146,7 +144,7 @@ final class RedirectListDetailViewModel {
     func addItem(_ redirect: RedirectRule) async -> Bool {
         guard !isMutating else { return false }
         isMutating = true
-        statusText = String(localized: "应用中…")
+        statusText = AppLocalization.string(localized: "应用中…")
         error = nil
         defer { isMutating = false; statusText = nil }
         do {
@@ -166,7 +164,7 @@ final class RedirectListDetailViewModel {
     func deleteItem(_ item: RedirectListItem) async -> Bool {
         guard !isMutating else { return false }
         isMutating = true
-        statusText = String(localized: "应用中…")
+        statusText = AppLocalization.string(localized: "应用中…")
         error = nil
         defer { isMutating = false; statusText = nil }
         do {

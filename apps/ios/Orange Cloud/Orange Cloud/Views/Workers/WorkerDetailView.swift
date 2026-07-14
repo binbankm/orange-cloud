@@ -9,25 +9,26 @@ import SwiftUI
 import Charts
 
 struct WorkerDetailView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     let script: CachedWorkerScript
     let session: SessionStore
 
-    @Environment(AuthManager.self) private var auth
-    @State private var metricsViewModel: WorkerMetricsViewModel
-    @State private var uploadViewModel: WorkerUploadViewModel
+    @EnvironmentObject private var auth: AuthManager
+    @StateObject private var metricsViewModel: WorkerMetricsViewModel
+    @StateObject private var uploadViewModel: WorkerUploadViewModel
     @State private var showUpload = false
     @State private var uploadDenied = false
 
     init(script: CachedWorkerScript, session: SessionStore) {
         self.script = script
         self.session = session
-        _metricsViewModel = State(initialValue: WorkerMetricsViewModel(
+        _metricsViewModel = StateObject(wrappedValue: WorkerMetricsViewModel(
             analyticsService: session.analyticsService,
             accountId: script.accountId,
             scriptName: script.id
         ))
-        _uploadViewModel = State(initialValue: WorkerUploadViewModel(
+        _uploadViewModel = StateObject(wrappedValue: WorkerUploadViewModel(
             service: session.workerService,
             accountId: script.accountId
         ))
@@ -37,6 +38,8 @@ struct WorkerDetailView: View {
     private var canWrite: Bool { auth.hasScope("workers-scripts.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         List {
             Section("信息") {
                 if let usageModel = script.usageModel {
@@ -45,7 +48,7 @@ struct WorkerDetailView: View {
                 if !script.handlers.isEmpty {
                     LabeledContent("Handlers", value: script.handlers.joined(separator: ", "))
                 }
-                LabeledContent("Logpush", value: script.logpush ? String(localized: "开启") : String(localized: "关闭"))
+                LabeledContent("Logpush", value: script.logpush ? AppLocalization.string(localized: "开启") : AppLocalization.string(localized: "关闭"))
                 if let created = WorkerScript.parseDate(script.createdOn) {
                     LabeledContent("创建时间") {
                         Text(created, format: .dateTime.year().month().day().hour().minute())
@@ -76,7 +79,7 @@ struct WorkerDetailView: View {
                     }
                 }
                 ProGatedNavigationLink(
-                    label: String(localized: "变量与密钥"),
+                    label: "变量与密钥",
                     systemImage: "key",
                     requiredScope: "workers-scripts.read",
                     feature: .workerSecrets
@@ -84,7 +87,7 @@ struct WorkerDetailView: View {
                     WorkerSecretsView(accountId: script.accountId, scriptName: script.id, session: session)
                 }
                 ProGatedNavigationLink(
-                    label: String(localized: "触发器"),
+                    label: "触发器",
                     systemImage: "clock",
                     requiredScope: "workers-scripts.read",
                     feature: .workerTriggers
@@ -92,7 +95,7 @@ struct WorkerDetailView: View {
                     WorkerTriggersView(accountId: script.accountId, scriptName: script.id, session: session)
                 }
                 ProGatedNavigationLink(
-                    label: String(localized: "域名"),
+                    label: "域名",
                     systemImage: "globe",
                     requiredScope: "workers-scripts.read",
                     feature: .workerRoutes
@@ -104,7 +107,7 @@ struct WorkerDetailView: View {
 
             Section("调试") {
                 ProGatedNavigationLink(
-                    label: String(localized: "实时日志"),
+                    label: "实时日志",
                     systemImage: "text.alignleft",
                     requiredScope: "workers-tail.read",
                     feature: .workerTail
@@ -120,7 +123,7 @@ struct WorkerDetailView: View {
         .sheet(isPresented: $showUpload) {
             WorkerUploadView(mode: .replace(scriptName: script.id), viewModel: uploadViewModel) {}
         }
-        .sensoryFeedback(.success, trigger: uploadViewModel.didUpload)
+        .ocSensoryFeedback(.success, trigger: uploadViewModel.didUpload)
         .alert("权限不足", isPresented: $uploadDenied) {
             Button("好", role: .cancel) {}
         } message: {
@@ -281,7 +284,7 @@ struct WorkerDetailView: View {
                     LineMark(
                         x: .value("时间", point.date),
                         y: .value("错误", point.errors),
-                        series: .value("指标", String(localized: "错误"))
+                        series: .value("指标", AppLocalization.string(localized: "错误"))
                     )
                     .interpolationMethod(.monotone)
                     .foregroundStyle(.red)

@@ -12,7 +12,7 @@ import SwiftUI
 struct R2BucketDeleteConfirmView: View {
 
     let bucket: R2Bucket
-    let viewModel: R2BucketListViewModel
+    @ObservedObject var viewModel: R2BucketListViewModel
     let accountId: String
 
     @Environment(\.dismiss) private var dismiss
@@ -88,7 +88,7 @@ struct R2BucketDeleteConfirmView: View {
                     .disabled(!canDelete)
                 }
             }
-            .navigationTitle("删除存储桶")
+            .ocNavigationTitle("删除存储桶")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

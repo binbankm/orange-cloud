@@ -8,8 +8,6 @@
 //
 
 import SwiftUI
-import SwiftData
-import TipKit
 
 /// 域名 Tab 外壳：导航容器（Stack / Split）常驻，账号切换只重建容器内内容。
 /// **不要把 `.id(账号)` 挪回容器外层或 MainTabView**：ensureAccounts 可能在本 Tab
@@ -25,6 +23,7 @@ import TipKit
 /// 唯一两全的形态 = 外壳栈根 + `.id` 内侧：`content.navigationDestination(...).id(...)`。
 /// 同 DeveloperHubView 的 DevHubRoute navdest 铁律：navdest 只挂栈根。
 struct ZoneListView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var selectedZone: CachedZone?
@@ -32,19 +31,21 @@ struct ZoneListView: View {
     /// 让栈根 navdest 的目的页能引用同一命名空间。
     @Namespace private var zoomNamespace
 
-    private let session: SessionStore
+    @ObservedObject private var session: SessionStore
 
     init(session: SessionStore) {
-        self.session = session
+        _session = ObservedObject(wrappedValue: session)
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         if sizeClass == .regular {
             NavigationSplitView {
                 ZoneListContent(session: session, isSplit: true, selectedZone: $selectedZone, zoomNamespace: zoomNamespace)
                     .id(session.selectedAccount?.id)
                     // 选中态住在外壳，账号切换时手动清空，否则 detail 栏残留旧账号的域名
-                    .onChange(of: session.selectedAccount?.id) {
+                    .onChange(of: session.selectedAccount?.id) { _ in
                         selectedZone = nil
                     }
             } detail: {
@@ -55,7 +56,11 @@ struct ZoneListView: View {
                             .zoneRouteDestinations(session: session)
                     }
                 } else {
-                    ContentUnavailableView("选择一个域名", systemImage: "globe", description: Text("从左侧列表选择域名查看详情"))
+                    OCContentUnavailableView(
+                        title: AppLocalization.string(localized: "选择一个域名"),
+                        systemImage: "globe",
+                        description: Text(AppLocalization.string(localized: "从左侧列表选择域名查看详情"))
+                    )
                 }
             }
         } else {
@@ -75,13 +80,13 @@ struct ZoneListView: View {
 /// 域名列表内容（原 ZoneListView 本体）：@Query 谓词在 init 按当前账号构建，
 /// 外壳用 `.id(selectedAccount)` 在账号切换时重建本视图以刷新谓词。
 private struct ZoneListContent: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @Environment(SessionStore.self) private var session
-    @Environment(AuthManager.self) private var auth
-    @Environment(\.modelContext) private var modelContext
-    @Query private var cachedZones: [CachedZone]
+    @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var auth: AuthManager
+    @EnvironmentObject private var cacheStore: CacheStore
 
-    @State private var viewModel: ZoneListViewModel
+    @StateObject private var viewModel: ZoneListViewModel
     @State private var searchText = ""
     @State private var showAddSheet = false
     @State private var showAddDenied = false
@@ -92,12 +97,7 @@ private struct ZoneListContent: View {
     private let zoomNamespace: Namespace.ID
 
     init(session: SessionStore, isSplit: Bool, selectedZone: Binding<CachedZone?>, zoomNamespace: Namespace.ID) {
-        let accountId = session.selectedAccount?.id ?? ""
-        _cachedZones = Query(
-            filter: #Predicate<CachedZone> { $0.accountId == accountId },
-            sort: \CachedZone.name
-        )
-        _viewModel = State(initialValue: ZoneListViewModel(zoneService: session.zoneService))
+        _viewModel = StateObject(wrappedValue: ZoneListViewModel(zoneService: session.zoneService))
         self.isSplit = isSplit
         _selectedZone = selectedZone
         self.zoomNamespace = zoomNamespace
@@ -106,6 +106,11 @@ private struct ZoneListContent: View {
     private var filteredZones: [CachedZone] {
         guard !searchText.isEmpty else { return cachedZones }
         return cachedZones.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    private var cachedZones: [CachedZone] {
+        cacheStore.zones(for: session.selectedAccount?.id ?? "")
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     private var activeCount: Int {
@@ -122,6 +127,8 @@ private struct ZoneListContent: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         Group {
             if isSplit {
                 sidebarLayout
@@ -141,15 +148,15 @@ private struct ZoneListContent: View {
                 )
             }
         }
-        .alert("权限不足", isPresented: $showAddDenied) {
-            Button("好", role: .cancel) {}
+        .alert(AppLocalization.string(localized: "权限不足"), isPresented: $showAddDenied) {
+            Button(AppLocalization.string(localized: "好"), role: .cancel) {}
         } message: {
-            Text("当前授权未包含域名编辑权限（zone.write）。\n请在设置中退出登录后重新授权「域名」并开启编辑权限。")
+            Text(AppLocalization.string(localized: "当前授权未包含域名编辑权限（zone.write）。\n请在设置中退出登录后重新授权「域名」并开启编辑权限。"))
         }
     }
 
     private var addButton: some View {
-        Button("添加域名", systemImage: "plus") {
+        Button(AppLocalization.string(localized: "添加域名"), systemImage: "plus") {
             requireAddZone()
         }
     }
@@ -163,7 +170,7 @@ private struct ZoneListContent: View {
             } else if cachedZones.isEmpty {
                 emptyState
             } else if filteredZones.isEmpty {
-                ContentUnavailableView.search(text: searchText)
+                OCContentUnavailableView.search(text: searchText)
             } else {
                 List(selection: $selectedZone) {
                     Section {
@@ -172,14 +179,14 @@ private struct ZoneListContent: View {
                                 .tag(zone)
                         }
                     } header: {
-                        Text("\(cachedZones.count) 个域名 · \(activeCount) 个已启用")
+                        Text(AppLocalization.string(localized: "\(cachedZones.count) 个域名 · \(activeCount) 个已启用"))
                     }
                 }
                 .refreshable { await refresh(force: true) }
             }
         }
-        .navigationTitle("域名")
-        .searchable(text: $searchText, prompt: "搜索域名")
+        .navigationTitle(AppLocalization.string(localized: "域名"))
+        .searchable(text: $searchText, prompt: AppLocalization.string(localized: "搜索域名"))
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 refreshButton
@@ -200,14 +207,14 @@ private struct ZoneListContent: View {
             } else if cachedZones.isEmpty {
                 emptyState
             } else if filteredZones.isEmpty {
-                ContentUnavailableView.search(text: searchText)
+                OCContentUnavailableView.search(text: searchText)
             } else {
                 zoneList
             }
         }
         .background { SkyBackground() }
-        .navigationTitle("域名")
-        .searchable(text: $searchText, prompt: "搜索域名")
+        .navigationTitle(AppLocalization.string(localized: "域名"))
+        .searchable(text: $searchText, prompt: AppLocalization.string(localized: "搜索域名"))
         // navigationDestination(for: CachedZone.self) 挂在外壳 ZoneListView 的栈根，
         // 不能挂回这里：iOS 17.0 上 navdest 注册在栈内容的嵌套子视图会在 push 时
         // 触发 AttributeGraph 无限循环整 App 冻结（见外壳注释）。
@@ -225,11 +232,10 @@ private struct ZoneListContent: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: OCLayout.islandGap) {
                 // 大标题下的统计副标题（设计稿 oc-subtitle）
-                Text("\(cachedZones.count) 个域名 · \(activeCount) 个已启用")
+                Text(AppLocalization.string(localized: "\(cachedZones.count) 个域名 · \(activeCount) 个已启用"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
-                TipView(ZoneRefreshTip())
                 ForEach(filteredZones) { zone in
                     NavigationLink(value: zone) {
                         ZoneCard(zone: zone, accountName: session.selectedAccount?.name ?? "")
@@ -256,22 +262,22 @@ private struct ZoneListContent: View {
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("没有域名", systemImage: "globe.slash")
+        OCContentUnavailableView {
+            Label(AppLocalization.string(localized: "没有域名"), systemImage: "globe.slash")
         } description: {
             Text(canWrite
-                 ? String(localized: "当前账号下还没有域名，现在就添加第一个吧")
-                 : String(localized: "当前账号下还没有域名"))
+                 ? AppLocalization.string(localized: "当前账号下还没有域名，现在就添加第一个吧")
+                 : AppLocalization.string(localized: "当前账号下还没有域名"))
         } actions: {
             if canWrite {
-                Button("添加域名") { showAddSheet = true }
+                Button(AppLocalization.string(localized: "添加域名")) { showAddSheet = true }
                     .buttonStyle(.borderedProminent)
                     .tint(Color.ocOrangePressed)
                     .fontWeight(.bold)
-                Button("刷新") { Task { await refresh(force: true) } }
+                Button(AppLocalization.string(localized: "刷新")) { Task { await refresh(force: true) } }
                     .buttonStyle(.bordered)
             } else {
-                Button("刷新") { Task { await refresh(force: true) } }
+                Button(AppLocalization.string(localized: "刷新")) { Task { await refresh(force: true) } }
                     .buttonStyle(.borderedProminent)
                     .tint(Color.ocOrangePressed)
                     .fontWeight(.bold)
@@ -282,16 +288,19 @@ private struct ZoneListContent: View {
     private func refresh(force: Bool = false) async {
         await session.ensureAccounts()
         guard let account = session.selectedAccount else { return }
-        await viewModel.refresh(accountId: account.id, accountName: account.name, context: modelContext, force: force)
+        await viewModel.refresh(accountId: account.id, accountName: account.name, force: force)
     }
 }
 
 // MARK: - iPad 侧栏行
 
 private struct ZoneSidebarRow: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let zone: CachedZone
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         HStack(spacing: 10) {
             ZoneAvatar(domain: zone.name, size: 30)
             VStack(alignment: .leading, spacing: 2) {
@@ -310,10 +319,13 @@ private struct ZoneSidebarRow: View {
 // MARK: - Zone 卡片（iPhone）
 
 struct ZoneCard: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
     let zone: CachedZone
     var accountName: String = ""
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         HStack(spacing: 12) {
             ZoneAvatar(domain: zone.name, size: 36)
 

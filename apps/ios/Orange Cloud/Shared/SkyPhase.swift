@@ -30,26 +30,22 @@ nonisolated enum SkyPhase {
 
     /// 天空主体（自上而下）
     var body: [Color] {
+        let theme = AppTheme.current
         switch self {
-        case .dawn:
-            [Color(red: 1.00, green: 0.91, blue: 0.82), Color(red: 0.96, green: 0.95, blue: 0.93)]
-        case .day:
-            [Color(red: 0.99, green: 0.95, blue: 0.89), Color(red: 0.95, green: 0.95, blue: 0.95)]
-        case .dusk:
-            [Color(red: 1.00, green: 0.87, blue: 0.75), Color(red: 0.94, green: 0.93, blue: 0.95)]
-        case .ember:
-            [Color(red: 0.12, green: 0.07, blue: 0.03), Color(red: 0.06, green: 0.055, blue: 0.075), Color(red: 0.04, green: 0.04, blue: 0.06)]
-        case .night:
-            [Color(red: 0.07, green: 0.05, blue: 0.04), Color(red: 0.04, green: 0.04, blue: 0.055)]
+        case .dawn:  return theme.skyDawn
+        case .day:   return theme.skyDay
+        case .dusk:  return theme.skyDusk
+        case .ember: return theme.skyEmber
+        case .night: return theme.skyNight
         }
     }
 
     /// 顶部光源（白昼是日光，夜里是城市上空的橙色辉光）
     var glow: Color {
         switch self {
-        case .dawn:  Color(red: 1.00, green: 0.69, blue: 0.40).opacity(0.50)
+        case .dawn:  Color.ocOrange.opacity(0.50)
         case .day:   Color.ocOrange.opacity(0.20)
-        case .dusk:  Color(red: 0.96, green: 0.52, blue: 0.26).opacity(0.42)
+        case .dusk:  Color.ocOrange.opacity(0.42)
         case .ember: Color.ocOrange.opacity(0.30)
         case .night: Color.ocOrange.opacity(0.15)
         }

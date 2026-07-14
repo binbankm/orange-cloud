@@ -9,14 +9,15 @@
 import SwiftUI
 
 struct RedirectListDetailView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    @State private var viewModel: RedirectListDetailViewModel
+    @StateObject private var viewModel: RedirectListDetailViewModel
     @State private var showItemEditor = false
     @State private var itemToDelete: RedirectListItem?
-    @Environment(AuthManager.self) private var auth
+    @EnvironmentObject private var auth: AuthManager
 
     init(list: RedirectList, session: SessionStore) {
-        _viewModel = State(initialValue: RedirectListDetailViewModel(
+        _viewModel = StateObject(wrappedValue: RedirectListDetailViewModel(
             list: list,
             accountId: session.selectedAccount?.id ?? "",
             service: session.bulkRedirectService
@@ -27,12 +28,14 @@ struct RedirectListDetailView: View {
     private var canEnable: Bool { auth.hasScope("mass-url-redirects.write") }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         List {
             enableSection
             itemsSection
         }
         .daybreakList()
-        .navigationTitle(viewModel.list.name ?? String(localized: "重定向列表"))
+        .navigationTitle(viewModel.list.name ?? AppLocalization.string(localized: "重定向列表"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -46,7 +49,7 @@ struct RedirectListDetailView: View {
             await viewModel.loadItems()
             await viewModel.loadEnableStatus()
         }
-        .sensoryFeedback(.success, trigger: viewModel.didMutate)
+        .ocSensoryFeedback(.success, trigger: viewModel.didMutate)
         .sheet(isPresented: $showItemEditor) {
             RedirectItemEditorView(viewModel: viewModel)
         }
@@ -91,7 +94,7 @@ struct RedirectListDetailView: View {
                 HStack {
                     Text("启用此列表的重定向")
                     Spacer()
-                    Text(viewModel.isEnabled ? String(localized: "已启用") : String(localized: "未启用"))
+                    Text(viewModel.isEnabled ? AppLocalization.string(localized: "已启用") : AppLocalization.string(localized: "未启用"))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -109,8 +112,8 @@ struct RedirectListDetailView: View {
                 ProgressView().frame(maxWidth: .infinity)
             } else if viewModel.items.isEmpty {
                 Text(canWriteItems
-                     ? String(localized: "暂无重定向条目，点右上角 + 添加。")
-                     : String(localized: "暂无重定向条目。"))
+                     ? AppLocalization.string(localized: "暂无重定向条目，点右上角 + 添加。")
+                     : AppLocalization.string(localized: "暂无重定向条目。"))
                     .font(.footnote).foregroundStyle(.secondary)
             } else {
                 ForEach(viewModel.items) { item in
@@ -166,8 +169,9 @@ struct RedirectListDetailView: View {
 // MARK: - 条目编辑器（新增）
 
 private struct RedirectItemEditorView: View {
+    @EnvironmentObject private var preferences: AppPreferencesStore
 
-    let viewModel: RedirectListDetailViewModel
+    @ObservedObject var viewModel: RedirectListDetailViewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var sourceUrl = ""
@@ -185,6 +189,8 @@ private struct RedirectItemEditorView: View {
     }
 
     var body: some View {
+
+        let _ = preferences.languageRaw
         NavigationStack {
             Form {
                 Section {
@@ -216,7 +222,7 @@ private struct RedirectItemEditorView: View {
                     Section { Text(error).font(.footnote).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("添加重定向")
+            .ocNavigationTitle("添加重定向")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }

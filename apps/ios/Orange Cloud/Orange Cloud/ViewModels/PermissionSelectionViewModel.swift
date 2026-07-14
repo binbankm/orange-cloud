@@ -4,13 +4,12 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class PermissionSelectionViewModel {
+final class PermissionSelectionViewModel: ObservableObject {
 
-    var permissions: [FeaturePermission] = FeaturePermission.allFeatures
+    @Published var permissions: [FeaturePermission] = FeaturePermission.allFeatures
 
     // 当前选中的 scope ID 列表（用于预览）
     var selectedScopes: [String] {

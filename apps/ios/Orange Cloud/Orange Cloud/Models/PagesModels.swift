@@ -167,12 +167,12 @@ nonisolated enum PagesDeployStatus: String, Sendable {
 
     var label: String {
         switch self {
-        case .success:  String(localized: "成功")
-        case .idle:     String(localized: "排队中")
-        case .active:   String(localized: "进行中")
-        case .failure:  String(localized: "失败")
-        case .canceled: String(localized: "已取消")
-        case .unknown:  String(localized: "未知")
+        case .success:  AppLocalization.string(localized: "成功")
+        case .idle:     AppLocalization.string(localized: "排队中")
+        case .active:   AppLocalization.string(localized: "进行中")
+        case .failure:  AppLocalization.string(localized: "失败")
+        case .canceled: AppLocalization.string(localized: "已取消")
+        case .unknown:  AppLocalization.string(localized: "未知")
         }
     }
 }
@@ -235,13 +235,13 @@ nonisolated enum PagesDomainStatus: String, Sendable {
 
     var label: String {
         switch self {
-        case .active:       String(localized: "生效中")
-        case .pending:      String(localized: "验证中")
-        case .initializing: String(localized: "初始化")
-        case .deactivated:  String(localized: "已停用")
-        case .blocked:      String(localized: "已封锁")
-        case .error:        String(localized: "错误")
-        case .unknown:      String(localized: "未知")
+        case .active:       AppLocalization.string(localized: "生效中")
+        case .pending:      AppLocalization.string(localized: "验证中")
+        case .initializing: AppLocalization.string(localized: "初始化")
+        case .deactivated:  AppLocalization.string(localized: "已停用")
+        case .blocked:      AppLocalization.string(localized: "已封锁")
+        case .error:        AppLocalization.string(localized: "错误")
+        case .unknown:      AppLocalization.string(localized: "未知")
         }
     }
 }

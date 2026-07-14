@@ -6,16 +6,15 @@
 //
 
 import Foundation
-import Observation
+import Combine
 
-@Observable
 @MainActor
-final class TunnelListViewModel {
+final class TunnelListViewModel: ObservableObject {
 
-    var tunnels: [Tunnel] = []
-    var isLoading = false
-    var isSaving = false
-    var error: String?
+    @Published var tunnels: [Tunnel] = []
+    @Published var isLoading = false
+    @Published var isSaving = false
+    @Published var error: String?
 
     private let service: TunnelService
 
@@ -64,21 +63,20 @@ final class TunnelListViewModel {
     }
 }
 
-@Observable
 @MainActor
-final class TunnelDetailViewModel {
+final class TunnelDetailViewModel: ObservableObject {
 
     let tunnel: Tunnel
 
-    var token: String?
-    var config: TunnelConfig?
-    var isLoadingToken = false
-    var isLoadingConfig = false
-    var configLoaded = false
-    var isSaving = false
-    var error: String?
+    @Published var token: String?
+    @Published var config: TunnelConfig?
+    @Published var isLoadingToken = false
+    @Published var isLoadingConfig = false
+    @Published var configLoaded = false
+    @Published var isSaving = false
+    @Published var error: String?
     /// 保存公共主机名后的 DNS 提示（自动建 CNAME 成功，或需手动添加）
-    var dnsNotice: String?
+    @Published var dnsNotice: String?
 
     private let accountId: String
     private let tunnelService: TunnelService
@@ -211,24 +209,24 @@ final class TunnelDetailViewModel {
     /// 为公共主机名自动建代理 CNAME；无 dns.write 或找不到域名时给出手动提示。
     private func ensureCNAME(for hostname: String) async {
         guard canWriteDNS else {
-            dnsNotice = String(localized: "请在 DNS 中为 \(hostname) 添加代理 CNAME，目标 \(cnameTarget)")
+            dnsNotice = AppLocalization.string(localized: "请在 DNS 中为 \(hostname) 添加代理 CNAME，目标 \(cnameTarget)")
             return
         }
         do {
             let zones = try await loadZones()
             guard let zone = bestZone(for: hostname, in: zones) else {
-                dnsNotice = String(localized: "未找到 \(hostname) 所属域名，请手动添加代理 CNAME，目标 \(cnameTarget)")
+                dnsNotice = AppLocalization.string(localized: "未找到 \(hostname) 所属域名，请手动添加代理 CNAME，目标 \(cnameTarget)")
                 return
             }
             let record = CreateDNSRecord(
                 type: "CNAME", name: hostname, content: cnameTarget,
                 proxied: true, ttl: 1, priority: nil,
-                comment: String(localized: "Cloudflare Tunnel")
+                comment: AppLocalization.string(localized: "Cloudflare Tunnel")
             )
             _ = try await dnsService.createRecord(zoneId: zone.id, record: record)
-            dnsNotice = String(localized: "已自动添加代理 CNAME：\(hostname) → \(cnameTarget)")
+            dnsNotice = AppLocalization.string(localized: "已自动添加代理 CNAME：\(hostname) → \(cnameTarget)")
         } catch {
-            dnsNotice = String(localized: "DNS 记录未自动创建，请手动添加代理 CNAME，目标 \(cnameTarget)")
+            dnsNotice = AppLocalization.string(localized: "DNS 记录未自动创建，请手动添加代理 CNAME，目标 \(cnameTarget)")
         }
     }
 
@@ -247,15 +245,14 @@ final class TunnelDetailViewModel {
     }
 }
 
-@Observable
 @MainActor
-final class WAFRulesViewModel {
+final class WAFRulesViewModel: ObservableObject {
 
-    private(set) var ruleset: WAFRuleset?
-    private(set) var loaded = false        // 区分"未加载"与"加载过但没有规则"
-    var isLoading = false
-    var error: String?
-    var togglingRuleId: String?
+    @Published private(set) var ruleset: WAFRuleset?
+    @Published private(set) var loaded = false
+    @Published var isLoading = false
+    @Published var error: String?
+    @Published var togglingRuleId: String?
 
     var rules: [WAFRule] { ruleset?.rules ?? [] }
 
@@ -299,8 +296,8 @@ final class WAFRulesViewModel {
 
     // MARK: - 设备端 AI 生成（自然语言 → 结构化 → 表达式）
 
-    var isGenerating = false
-    var generationError: String?
+    @Published var isGenerating = false
+    @Published var generationError: String?
 
     /// 用自然语言生成一条规则草稿；失败时写入 generationError 并返回 nil。
     func generate(from naturalLanguage: String, locale: Locale = .current) async -> GeneratedWAFRule? {
@@ -318,7 +315,7 @@ final class WAFRulesViewModel {
     }
 
     /// 新建规则：已有规则集则追加，否则创建 entrypoint。成功返回 true。
-    var isSaving = false
+    @Published var isSaving = false
 
     func addRule(_ draft: WAFRuleCreate) async -> Bool {
         guard !isSaving else { return false }
